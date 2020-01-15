@@ -1,0 +1,8 @@
+The executable file is found in the student environment under: 
+/u/cs452/tftp/ARM/vscurtu/a0.elf
+
+To build it, use the following command at the root of the repository on a waterloo remote computer:
+	cd src && make && cp bwio.a ../lib/libbwio.a && cd ../a0 && make && cp a0.elf /u/cs452/tftp/ARM/vscurtu/ && cd ..
+
+To run it, use the following command in redboot: 
+	load ARM/vscurtu/a0.elf; go
