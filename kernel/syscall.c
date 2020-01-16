@@ -1,9 +1,6 @@
 #include "syscall.h"
 #include <bwio.h>
-
-extern int enter_kernel();
-extern void enter_user(int task_id);
-extern void software_interupt(int syscall_id);
+#include "arm_lib.h"
 
 // User calls syscall then:
 // syscall (C) -> software_interupt (ARM) -> enter_kernel (ARM) -> handle_swi (C)
@@ -17,15 +14,6 @@ void handle_swi(int syscall_id)
             // Test with 2 hard coded tasks first?
         break;
     }
-}
-
-void init_kernel()
-{
-    // Set the function that software interupts call
-    int * handler_destination = 0x28;
-    *handler_destination =  (int*) enter_kernel;
-
-
 }
 
 int syscall(int id)

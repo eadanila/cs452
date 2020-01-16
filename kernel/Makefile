@@ -25,16 +25,16 @@ CFLAGS = -g -S -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I../include
 # -T: use linker script
 LDFLAGS = -static -e main -nmagic -T linker.ld -L ../lib -L $(XLIBDIR2)
 
-all: test.elf
+all: kernel.elf
 
 arm_lib.o: arm_lib.asm
 	$(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
 
-test.s: test.c
-	$(CC) -S $(CFLAGS) test.c
+main.s: main.c
+	$(CC) -S $(CFLAGS) main.c
 
-test.o: test.s
-	$(AS) $(ASFLAGS) -o test.o test.s
+main.o: main.s
+	$(AS) $(ASFLAGS) -o main.o main.s
 
 syscall.s: syscall.c
 	$(CC) -S $(CFLAGS) syscall.c
@@ -51,8 +51,8 @@ kernel.o: kernel.s
 # arm_lib.o: arm_lib.s
 # 	$(AS) $(ASFLAGS) -o test.o arm_lib.s
 
-test.elf: test.o arm_lib.o syscall.o kernel.o
-	$(LD) $(LDFLAGS) -o $@ test.o arm_lib.o syscall.o kernel.o -lbwio -lgcc
+kernel.elf: main.o arm_lib.o syscall.o kernel.o
+	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o -lbwio -lgcc
 
 clean:
-	-rm -f test.elf *.s *.o
+	-rm -f kernel.elf *.s *.o

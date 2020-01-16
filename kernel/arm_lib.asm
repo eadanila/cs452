@@ -2,6 +2,7 @@
 .global enter_kernel
 .global enter_user
 .global software_interupt
+.global init_task
 
 arg_return_test:
     @mov r0, #23
@@ -70,7 +71,14 @@ enter_user:
     msr cpsr_all, r1
     ldmia r0, {r0-r15}
 
+@ Could have this instead of intializing a placeholder set of registers on stack.
+@enter_user_first_time:
 
+@ This will need to initialize a stack frame such that it accepts an enter user call onto it
+@ See the header for it in arm_lib.h for parameters etc...
+init_task:
+    sub r0, r0, #64
+    mov r3, #0
 
 
 

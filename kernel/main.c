@@ -4,12 +4,6 @@
 #include "syscall.h"
 #include "kernel.h"
 
-#define MEMORY_START   0x0100000
-#define MEMORY_END     0x2000000
-
-#define TASK1_STACK    0x0200000
-#define TASK2_STACK    0x0400000
-
 void itos(int i, char* s)
 {	
 	if (i == 0)
@@ -48,7 +42,7 @@ extern int arg_return_test(int i);
 void test_1()
 {
     int * temp;
-    temp = MEMORY_START;
+    temp = 0x0100000;
     *temp = 0;
 
     int r = arg_return_test(24);
@@ -79,8 +73,11 @@ int main( int argc, char* argv[] ) {
     // bwputstr(COM2, "test\r\n");  
 
     // test_1();
+
 	// Doesnt work since we start in kernel, need to setup tasks and call from within those!
-	syscall_test();
+	// syscall_test();
+
+	Create(0, 0);
 
     return 0;
 }

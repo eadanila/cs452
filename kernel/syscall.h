@@ -1,6 +1,5 @@
 #define SYSCALL_YIELD 1
 
-void init_kernel();
 void Yield();
 int syscall(int id);
 
