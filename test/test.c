@@ -2,6 +2,12 @@
 #include <ts7200.h>
 #include <limits.h>
 
+#define MEMORY_START   0x0100000
+#define MEMORY_END     0x2000000
+
+#define TASK1_STACK    0x0200000
+#define TASK2_STACK    0x0400000
+
 void itos(int i, char* s)
 {	
 	if (i == 0)
@@ -36,11 +42,13 @@ void printi(int i)
 }
 
 extern int arg_return_test(int i);
+extern int enter_kernel();
+extern void enter_user(int task_id);
 
 void test_1()
 {
     int * temp;
-    temp = 0x0100000;
+    temp = MEMORY_START;
     *temp = 0;
 
     int r = arg_return_test(24);
@@ -52,6 +60,15 @@ void test_1()
     bwputstr(COM2, "reached");
 }
 
+
+void syscall_test()
+{
+	// enter_kernel();
+	// enter_user();
+}
+
+
+
 // make && cp test.elf /u/cs452/tftp/ARM/vscurtu/
 int main( int argc, char* argv[] ) { 
     bwsetspeed( COM2, 115200 );
@@ -59,7 +76,8 @@ int main( int argc, char* argv[] ) {
 
     bwputstr(COM2, "test\r\n");  
 
-    test_1();
+    // test_1();
+	enter_kernel_test();
 
     return 0;
 }
