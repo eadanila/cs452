@@ -1,6 +1,7 @@
 .global arg_return_test
 .global enter_kernel
 .global enter_user
+.global software_interupt
 
 arg_return_test:
     @mov r0, #23
@@ -11,11 +12,13 @@ arg_return_test:
 
     bx lr
 
+software_interupt:
+    @ r0 contains the syscall code
+    swi #0
 
 @ TODO Add syscall code that causes a SWI and triggers enter kernel.
 
 enter_kernel:
-
     push {r0}
 
     @ switch to system processor mode
@@ -47,8 +50,10 @@ enter_kernel:
     @ the stack pointer of the user that just exited to kernel
     ldmia sp, {r1-r14}
 
-    @ TODO Needed?
-    bx lr
+    @ b scream
+
+    @ Once inside of kernel, enter handler
+    b handle_swi
 
 
 enter_user:
@@ -64,7 +69,6 @@ enter_user:
     @ switch to user mode and load in user registers!
     msr cpsr_all, r1
     ldmia r0, {r0-r15}
-
 
 
 

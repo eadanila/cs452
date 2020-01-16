@@ -1,6 +1,8 @@
 #include <bwio.h>
 #include <ts7200.h>
 #include <limits.h>
+#include "syscall.h"
+#include "kernel.h"
 
 #define MEMORY_START   0x0100000
 #define MEMORY_END     0x2000000
@@ -42,8 +44,6 @@ void printi(int i)
 }
 
 extern int arg_return_test(int i);
-extern int enter_kernel();
-extern void enter_user(int task_id);
 
 void test_1()
 {
@@ -65,6 +65,7 @@ void syscall_test()
 {
 	// enter_kernel();
 	// enter_user();
+	Yield();
 }
 
 
@@ -74,10 +75,12 @@ int main( int argc, char* argv[] ) {
     bwsetspeed( COM2, 115200 );
 	bwsetfifo( COM2, OFF ); 
 
-    bwputstr(COM2, "test\r\n");  
+	init_kernel();
+    // bwputstr(COM2, "test\r\n");  
 
     // test_1();
-	enter_kernel_test();
+	// Doesnt work since we start in kernel, need to setup tasks and call from within those!
+	syscall_test();
 
     return 0;
 }
