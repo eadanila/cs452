@@ -23,12 +23,18 @@ CFLAGS = -g -S -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu
 # -e: set entry point
 # -nmagic: no page alignment
 # -T: use linker script
-LDFLAGS = -static -e kmain -nmagic -T linker.ld -L ../lib -L $(XLIBDIR2)
+LDFLAGS = -static -e main -nmagic -T linker.ld -L ../lib -L $(XLIBDIR2)
 
 all: kernel.elf
 
 arm_lib.o: arm_lib.asm
 	$(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
+
+main.s: main.c
+	$(CC) -S $(CFLAGS) main.c
+
+main.o: main.s
+	$(AS) $(ASFLAGS) -o main.o main.s
 
 syscall.s: syscall.c
 	$(CC) -S $(CFLAGS) syscall.c
@@ -42,35 +48,11 @@ kernel.s: kernel.c
 kernel.o: kernel.s
 	$(AS) $(ASFLAGS) -o kernel.o kernel.s
 
-kernel.elf: arm_lib.o syscall.o kernel.o
-	$(LD) $(LDFLAGS) -o $@ kernel.o arm_lib.o syscall.o -lbwio -lgcc
+# arm_lib.o: arm_lib.s
+# 	$(AS) $(ASFLAGS) -o test.o arm_lib.s
 
-##arm_lib.o: arm_lib.asm
-##	$(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
-##
-##main.s: main.c
-##	$(CC) -S $(CFLAGS) main.c
-##
-##main.o: main.s
-##	$(AS) $(ASFLAGS) -o main.o main.s
-##
-##syscall.s: syscall.c
-##	$(CC) -S $(CFLAGS) syscall.c
-##
-##syscall.o: syscall.s
-##	$(AS) $(ASFLAGS) -o syscall.o syscall.s
-##
-##kernel.s: kernel.c
-##	$(CC) -S $(CFLAGS) kernel.c
-##
-##kernel.o: kernel.s
-##	$(AS) $(ASFLAGS) -o kernel.o kernel.s
-##
-### arm_lib.o: arm_lib.s
-### 	$(AS) $(ASFLAGS) -o test.o arm_lib.s
-##
-##kernel.elf: main.o arm_lib.o syscall.o kernel.o
-##	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o -lbwio -lgcc
+kernel.elf: main.o arm_lib.o syscall.o kernel.o
+	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o -lbwio -lgcc
 
 clean:
 	-rm -f kernel.elf *.s *.o

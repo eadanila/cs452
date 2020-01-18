@@ -17,16 +17,6 @@ void *user_stack = (void *)0x2000000;
 // excluding kernel
 int task_count = 0;
 
-struct __attribute__((__packed__)) task {
-    int t_id;
-    int p_id;
-    uint *stack_base;
-    uint *stack_pointer;
-    void (*pc)(void);
-};
-
-struct task tasks[5];
-
 int next_t_id(void) {
     task_count = task_count + 1;
     return task_count;
@@ -76,29 +66,6 @@ void kinit() {
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
 
-    // init kernel task
-    tasks[0].t_id = 0;
-    tasks[0].p_id = 0;
-    tasks[0].stack_pointer = (uint *)0x01000000;
-    tasks[0].pc = 0x0; // what should this be for the kernel?
-    bwprintf(COM2, "\r\nKERNEL!\r\n");
-}
-
-void user_task(void) {
-    bwprintf(COM2, "hello, world\r\n");
-    //int t1 = task_init(1, &task_1);
-    //int t2 = task_init(1, &task_2);
-}
-
-void task_1(void) {
-    bwprintf(COM2, "task 1\r\n");
-}
-
-void task_2(void) {
-    bwprintf(COM2, "task 2\r\n");
-}
-
-int kmain(int argc, char *argv[]) {
     task_count = 0;
     uint *p = (uint *)0x20;
     for (int i = 0; i < 8; i++) {
@@ -108,15 +75,12 @@ int kmain(int argc, char *argv[]) {
     uint *handler_dest = (uint *)0x28;
     *handler_dest = (uint)enter_kernel;
 
-    kinit();
-    int id = task_init(0, user_task);
-    bwprintf(COM2, "aaaaaaaaa\r\n");
-    for (;;) {
-        tasks[id].stack_pointer = enter_user(tasks[id].stack_pointer);
-        handle_swi(tasks[id].stack_pointer);
 
-        bwprintf(COM2, "done\r\n");
-    }
-    return 0;
+    // init kernel task
+    tasks[0].t_id = 0;
+    tasks[0].p_id = 0;
+    tasks[0].stack_pointer = (uint *)0x01000000;
+    tasks[0].pc = 0x0; // what should this be for the kernel?
+    bwprintf(COM2, "\r\nKERNEL!\r\n");
 }
 

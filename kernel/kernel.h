@@ -22,5 +22,21 @@ struct __attribute__((__packed__)) frame {
     uint r14;
     uint r15;
 };
+typedef struct frame FRAME;
+
+struct __attribute__((__packed__)) task {
+    int t_id;
+    int p_id;
+    uint *stack_base;
+    uint *stack_pointer;
+    void (*pc)(void);
+};
+struct task TASK;
+
+struct task tasks[5];
+
+int task_init(int p_id, void (*f)(void));
+
+void kinit(void);
 
 #endif
