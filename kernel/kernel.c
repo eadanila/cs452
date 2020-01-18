@@ -1,58 +1,122 @@
+#include <bwio.h>
+
 #include "kernel.h"
-#include "syscall.h"
 #include "arm_lib.h"
+#include "syscall.h"
 
-#define MEMORY_START   0x0100000
-#define MEMORY_END     0x2000000
+void fuck(void);
 
-#define TASK1_STACK    0x0200000
-#define TASK2_STACK    0x0400000
+void print_lr(uint u) {
+    bwprintf(COM2, "shit's broke: %x\r\n", u);
+    while (1);
+}
 
-struct task
-{
-    int tid;
-    int* stack;
+// lowest address
+void *user_stack = (void *)0x2000000;
+
+// excluding kernel
+int task_count = 0;
+
+struct __attribute__((__packed__)) task {
+    int t_id;
+    int p_id;
+    uint *stack_base;
+    uint *stack_pointer;
+    void *pc;
 };
 
-struct task tasks[2];
-int task_cnt;
+struct task tasks[5];
 
-void init_kernel()
-{
-    // Set the function that software interupts call
-    int * handler_destination = 0x28;
-    *handler_destination =  (int*) enter_kernel;
-
-    struct task task1;
-    struct task task2;
-    tasks[0] = task1;
-    tasks[1] = task2;
-
-    tasks[0].stack = TASK1_STACK;
-    tasks[1].stack = TASK2_STACK;
-
-    task_cnt = 0;
+int next_t_id(void) {
+    task_count = task_count + 1;
+    return task_count;
 }
 
-void task1()
-{
-    Yield();
+int task_init(int p_id, void (*f)(void)) {
+    int id = next_t_id();
+    uint *stack_base = (uint *)0x0200000;
+    bwprintf(COM2, "deref1\r\n");
+
+    struct frame *fr = (struct frame *)(stack_base - 16);
+    bwprintf(COM2, "deref2\r\n");
+    tasks[id].t_id = id;
+    bwprintf(COM2, "deref3\r\n");
+    tasks[id].p_id = p_id;
+    bwprintf(COM2, "deref4\r\n");
+    tasks[id].stack_base = stack_base;
+    bwprintf(COM2, "deref5\r\n");
+    tasks[id].stack_pointer = stack_base - 16;
+    bwprintf(COM2, "deref6\r\n");
+    tasks[id].pc = f;
+
+    bwprintf(COM2, "deref7\r\n");
+
+    uint *p = stack_base - 16;
+
+    for (int i = 0; i < 17; i++) {
+        *(p+i) = 0;
+    }
+
+    fr->r15 = (uint)f;
+    fr->r13 = (uint)stack_base;
+    fr->r14 = exit_handler;
+    fr->cspr = (uint)0b10000;
+
+    for (int i = 0; i < 17; i++) {
+        bwprintf(COM2, "i:%d,&i:%x\r\n", i, *(p + i));
+    }
+
+    bwprintf(COM2, "\r\nDone task_init\r\n");
+
+    return id;
 }
 
-void task2()
-{
+void kinit() {
+    // init COM2
+    bwsetspeed(COM2, 115200);
+    bwsetfifo(COM2, OFF);
 
+    // init kernel task
+    tasks[0].t_id = 0;
+    tasks[0].p_id = 0;
+    tasks[0].stack_pointer = (void *)0x01000000;
+    tasks[0].pc = 0x0; // what should this be for the kernel?
+    bwprintf(COM2, "\r\nKERNEL!\r\n");
 }
 
-int Create(int priority, void (*function)())
-{
-    // Currently just 2 tasks being created in initialization and just activates one of them
-    // Currently want to test if we can enter a user mode and come back without catastrophically failing
-
-    enter_user(TASK1_STACK);
+void user_task(void) {
+    bwprintf(COM2, "hello, world\r\n");
+    //int t1 = task_init(1, &task_1);
+    //int t2 = task_init(1, &task_2);
 }
 
-void Yield()
-{
-    syscall(SYSCALL_YIELD);
+void task_1(void) {
+    bwprintf(COM2, "task 1\r\n");
 }
+
+void task_2(void) {
+    bwprintf(COM2, "task 2\r\n");
+}
+
+int kmain(int argc, char *argv[]) {
+    task_count = 0;
+    uint *p = (uint *)0x20;
+    for (int i = 0; i < 8; i++) {
+        *p = (uint)fuck;
+        p = p + 1;
+    }
+    uint *handler_dest = (uint *)0x28;
+    *handler_dest = (uint *)enter_kernel;
+
+    kinit();
+    int id = task_init(0, user_task);
+    bwprintf(COM2, "aaaaaaaaa\r\n");
+    for (;;) {
+        tasks[id].stack_pointer = enter_user(tasks[id].stack_pointer);
+        handle_swi(tasks[id].stack_pointer);
+
+        bwprintf(COM2, "done\r\n");
+    }
+    return 0;
+}
+

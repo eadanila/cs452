@@ -1,8 +1,9 @@
 .global arg_return_test
 .global enter_kernel
 .global enter_user
-.global software_interupt
+.global syscall
 .global init_task
+.global fuck
 
 arg_return_test:
     @mov r0, #23
@@ -13,9 +14,12 @@ arg_return_test:
 
     bx lr
 
-software_interupt:
+syscall:
     @ r0 contains the syscall code
     swi #0
+
+    @ after handling syscall return here
+    bx lr
 
 @ TODO Add syscall code that causes a SWI and triggers enter kernel.
 
@@ -36,6 +40,7 @@ enter_kernel:
 
     @ Push r1-r14 onto user stack
     stmdb r0, {r1-r14}^
+    sub r0, r0, #56 // 14x4=56
 
     @ Put the original r0 onto user stack
     pop {r1}
@@ -49,41 +54,43 @@ enter_kernel:
 
     @ Pop r1-r14, r0 is the return address and will contain
     @ the stack pointer of the user that just exited to kernel
-    ldmia sp, {r1-r14}
+    ldmia sp!, {r1-r14}
 
     @ b scream
 
     @ Once inside of kernel, enter handler
-    b handle_swi
+    @b handle_swi
 
+    bx lr
 
 enter_user:
     @ stack to return to is provided as argument in r0
     
     @ push kernel registers onto kernel stack
-    stmdb sp, {r1-r14}
+    stmdb sp!, {r1-r14}
 
     @ load spsr into r1
-    ldr r1, [r0]
-    add r0, r0, #4
+    ldmia r0!, {r1}
 
     @ switch to user mode and load in user registers!
     msr cpsr_all, r1
-    ldmia r0, {r0-r15}
+    ldmia r0!, {r0-r15}
 
 @ Could have this instead of intializing a placeholder set of registers on stack.
 @enter_user_first_time:
 
 @ This will need to initialize a stack frame such that it accepts an enter user call onto it
-@ See the header for it in arm_lib.h for parameters etc...
+@ extern int init_task(void stack_ptr, void (*f)(void));
 init_task:
-    sub r0, r0, #64
-    mov r3, #0
+    str r2, [r0, #-8]
+@    str r13, [r0, #-4]
+    str r1, [r0]
+    sub r0, r0, #0
+    mov pc, lr
 
-
-
-
-
+fuck:
+    mov r0, lr
+    b print_lr
 
 
 
