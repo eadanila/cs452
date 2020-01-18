@@ -22,7 +22,7 @@ struct __attribute__((__packed__)) task {
     int p_id;
     uint *stack_base;
     uint *stack_pointer;
-    void *pc;
+    void (*pc)(void);
 };
 
 struct task tasks[5];
@@ -51,7 +51,7 @@ int task_init(int p_id, void (*f)(void)) {
 
     bwprintf(COM2, "deref7\r\n");
 
-    uint *p = stack_base - 16;
+    uint *p = ((uint *)stack_base) - 16;
 
     for (int i = 0; i < 17; i++) {
         *(p+i) = 0;
@@ -59,8 +59,8 @@ int task_init(int p_id, void (*f)(void)) {
 
     fr->r15 = (uint)f;
     fr->r13 = (uint)stack_base;
-    fr->r14 = exit_handler;
-    fr->cspr = (uint)0b10000;
+    fr->r14 = (uint)exit_handler;
+    fr->cspr = (uint)0x10;
 
     for (int i = 0; i < 17; i++) {
         bwprintf(COM2, "i:%d,&i:%x\r\n", i, *(p + i));
@@ -79,7 +79,7 @@ void kinit() {
     // init kernel task
     tasks[0].t_id = 0;
     tasks[0].p_id = 0;
-    tasks[0].stack_pointer = (void *)0x01000000;
+    tasks[0].stack_pointer = (uint *)0x01000000;
     tasks[0].pc = 0x0; // what should this be for the kernel?
     bwprintf(COM2, "\r\nKERNEL!\r\n");
 }
@@ -106,7 +106,7 @@ int kmain(int argc, char *argv[]) {
         p = p + 1;
     }
     uint *handler_dest = (uint *)0x28;
-    *handler_dest = (uint *)enter_kernel;
+    *handler_dest = (uint)enter_kernel;
 
     kinit();
     int id = task_init(0, user_task);

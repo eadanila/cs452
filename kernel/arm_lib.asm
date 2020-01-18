@@ -54,7 +54,7 @@ enter_kernel:
 
     @ Pop r1-r14, r0 is the return address and will contain
     @ the stack pointer of the user that just exited to kernel
-    ldmia sp!, {r1-r14}
+    ldmia sp!, {r4-r11,r14}
 
     @ b scream
 
@@ -67,14 +67,14 @@ enter_user:
     @ stack to return to is provided as argument in r0
     
     @ push kernel registers onto kernel stack
-    stmdb sp!, {r1-r14}
+    stmdb sp!, {r4-r11,r14}
 
     @ load spsr into r1
     ldmia r0!, {r1}
 
     @ switch to user mode and load in user registers!
     msr cpsr_all, r1
-    ldmia r0!, {r0-r15}
+    ldmia r0, {r0-r15}
 
 @ Could have this instead of intializing a placeholder set of registers on stack.
 @enter_user_first_time:

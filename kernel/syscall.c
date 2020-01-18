@@ -9,7 +9,7 @@ void print_regs(struct frame *fp) {
 
     bwprintf(COM2, "cspr: %x\r\n", fp->cspr);
     bwprintf(COM2, "registers...\r\n");
-    uint *p = &(fp->r0);
+    uint *p = (uint *)(fp + 1);
     for (int i = 0; i < 16; i++) {
         bwprintf(COM2, "%d: ", i);
         bwprintf(COM2, "r%d: %x\r\n", i, *(p+i));
@@ -19,7 +19,7 @@ void print_regs(struct frame *fp) {
 // User calls syscall then:
 // syscall (C) -> software_interupt (ARM) -> enter_kernel (ARM) -> handle_swi (C)
 
-void handle_swi(uint stack_pointer)
+void handle_swi(uint *stack_pointer)
 {
     struct frame *fp = (struct frame *)stack_pointer;
     
@@ -43,7 +43,7 @@ void handle_swi(uint stack_pointer)
     }
 }
 
-void exit_handler(int exit_code) {
+void exit_handler() {
     bwprintf(COM2, "exit handler\r\n");
     syscall(SYSCALL_EXIT);
 }
