@@ -70,7 +70,7 @@ void kinit() {
     // Initialize kernel constants
     task_count = 0;
     next_task = 0;
-    init_pqueue(&task_schedual);
+    init_pqueue(&task_schedule);
     
     for(int id = 0; id < MAX_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;
 

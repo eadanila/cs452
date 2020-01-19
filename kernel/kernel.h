@@ -38,7 +38,7 @@ typedef struct task TASK;
 int task_count;
 int next_task;
 struct task tasks[MAX_TASKS_ALLOWED];
-pqueue task_schedual;
+pqueue task_schedule;
 
 int Create(int priority, void (*function)());
 
