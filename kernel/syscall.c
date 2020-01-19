@@ -30,17 +30,21 @@ void handle_swi(uint *stack_pointer)
     switch(syscall_id)
     {
         case SYSCALL_YIELD:
-            // Do stuff to yeild and switch into another task if there is one?
-            // Test with 2 hard coded tasks first?
+            // all this should do is send the task to the end of the ready queue
+
             break;
         case SYSCALL_EXIT:
             bwprintf(COM2, "We made it to SYSCALL_EXIT\r\n");
             break;
         default:
-            bwprintf(COM2, "What is syscall: %d?\r\n", syscall_id);
+            bwprintf(COM2, "What is a syscall for ants? %d?\r\n", syscall_id);
             while(1);
         break;
     }
+}
+
+void Yield() {
+    syscall(SYSCALL_YIELD);
 }
 
 void exit_handler() {
