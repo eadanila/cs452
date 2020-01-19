@@ -14,59 +14,67 @@ void print_lr(uint u) {
 // lowest address
 void *user_stack = (void *)0x2000000;
 
-// excluding kernel
-int task_count = 0;
+int next_task_id(void) {
+    // For now, do not try to fill in holes.
+    if(next_task + 1 >= MAXIMUM_TASKS_ALLOWED) return OUT_OF_TASK_DESCRIPTORS;
 
-int next_t_id(void) {
-    task_count = task_count + 1;
-    return task_count;
+    next_task++;
+    task_count++;
+    return next_task;
 }
 
-int task_init(int p_id, void (*f)(void)) {
-    int id = next_t_id();
-    uint *stack_base = (uint *)0x0200000;
-    bwprintf(COM2, "deref1\r\n");
+int Create(int priority, void (*function)())
+{
+    int id = next_task_id();
+    
+    if(id == OUT_OF_TASK_DESCRIPTORS) 
+    {
+        bwprintf(COM2, "\r\nMaximum number of tasks reached!\r\n");
+        return id;
+    }
+    
+    uint *stack_base = (uint *)(MEMORY_START+id*TASK_MEMORY_SIZE);
 
     struct frame *fr = (struct frame *)(stack_base - 16);
-    bwprintf(COM2, "deref2\r\n");
+    tasks[id].is_valid = 1;
     tasks[id].t_id = id;
-    bwprintf(COM2, "deref3\r\n");
-    tasks[id].p_id = p_id;
-    bwprintf(COM2, "deref4\r\n");
+    tasks[id].p_id = 0; // TODO Find way to pass down parent id.
     tasks[id].stack_base = stack_base;
-    bwprintf(COM2, "deref5\r\n");
     tasks[id].stack_pointer = stack_base - 16;
-    bwprintf(COM2, "deref6\r\n");
-    tasks[id].pc = f;
+    tasks[id].pc = function;
 
-    bwprintf(COM2, "deref7\r\n");
-
+    // TODO Remove
     uint *p = ((uint *)stack_base) - 16;
-
     for (int i = 0; i < 17; i++) {
         *(p+i) = 0;
     }
 
-    fr->r15 = (uint)f;
+    fr->r15 = (uint)function;
     fr->r13 = (uint)stack_base;
     fr->r14 = (uint)exit_handler;
-    fr->cspr = (uint)0x10;
+    fr->cspr = (uint)CSPR_USER_MODE;
 
+    // TODO Remove
     for (int i = 0; i < 17; i++) {
         bwprintf(COM2, "i:%d,&i:%x\r\n", i, *(p + i));
     }
 
-    bwprintf(COM2, "\r\nDone task_init\r\n");
+    bwprintf(COM2, "\r\nInitialized new task %d.\r\n", id);
 
     return id;
 }
 
 void kinit() {
-    // init COM2
+    // Initialize COM2
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
 
+    // Initialize kernel constants
     task_count = 0;
+    next_task = 0;
+    
+    for(int id = 0; id < MAXIMUM_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;
+
     uint *p = (uint *)0x20;
     for (int i = 0; i < 8; i++) {
         *p = (uint)fuck;

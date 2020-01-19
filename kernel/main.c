@@ -15,12 +15,14 @@ void task_2(void) {
 void user_task(void) {
     bwprintf(COM2, "hello, world\r\n");
     //int t1 = task_init(1, &task_1);
+    
     //int t2 = task_init(1, &task_2);
+    // Create(0, user_task);
 }
 
 int main(int argc, char *argv[]) {
     kinit();
-    int id = task_init(0, user_task);
+    int id = Create(0, user_task);
     bwprintf(COM2, "aaaaaaaaa\r\n");
     for (;;) {
         tasks[id].stack_pointer = enter_user(tasks[id].stack_pointer);
