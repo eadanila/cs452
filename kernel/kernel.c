@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include "arm_lib.h"
 #include "syscall.h"
+#include "pqueue.h"
 
 void fuck(void);
 
@@ -11,12 +12,9 @@ void print_lr(uint u) {
     while (1);
 }
 
-// lowest address
-void *user_stack = (void *)0x2000000;
-
 int next_task_id(void) {
     // For now, do not try to fill in holes.
-    if(next_task + 1 >= MAXIMUM_TASKS_ALLOWED) return OUT_OF_TASK_DESCRIPTORS;
+    if(next_task + 1 >= MAX_TASKS_ALLOWED) return OUT_OF_TASK_DESCRIPTORS;
 
     next_task++;
     task_count++;
@@ -72,8 +70,9 @@ void kinit() {
     // Initialize kernel constants
     task_count = 0;
     next_task = 0;
+    init_pqueue(&task_schedual);
     
-    for(int id = 0; id < MAXIMUM_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;
+    for(int id = 0; id < MAX_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;
 
     uint *p = (uint *)0x20;
     for (int i = 0; i < 8; i++) {
