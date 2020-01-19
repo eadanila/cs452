@@ -31,7 +31,7 @@ struct __attribute__((__packed__)) task {
     uint *stack_pointer;
     void (*pc)(void);
 };
-struct task TASK;
+typedef struct task TASK;
 
 struct task tasks[5];
 
