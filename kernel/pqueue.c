@@ -96,3 +96,17 @@ int get_current_priority(void) {
     return -1;
 }
 
+// TODO Change -1 in returns to 0 and uint 
+// Define task id of 0 as invalid?
+int next_scheduled_task()
+{
+    return front_task(get_current_priority());
+}
+
+void cycle_schedule()
+{
+    int p = get_current_priority();
+    int id = pop_task(p);
+    if(id == -1) return; // Do nothing if schedule is empty
+    add_task(id, p);
+}

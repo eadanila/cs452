@@ -20,6 +20,11 @@ int pop_task(int pri);
 int front_task(int pri);
 
 int get_current_priority(void);
+// Obtains the next task on the highest priority queue
+int next_scheduled_task(); 
+// Takes the next task on the highest prioirty queue, and places
+// it at the back of its queue
+void cycle_schedule(); 
 
 #endif
 

@@ -32,8 +32,8 @@ void handle_swi(uint *stack_pointer)
     switch(syscall_id)
     {
         case SYSCALL_YIELD:
-            // all this should do is send the task to the end of the ready queue
-
+            // All this should do is send the task to the end of the ready queue
+            cycle_schedule();
             break;
         case SYSCALL_EXIT:
             #if DEBUG_ON

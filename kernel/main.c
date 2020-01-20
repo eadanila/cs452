@@ -53,17 +53,12 @@ void first_task(void)
 int main(int argc, char *argv[]) {
     kinit();
     int id = Create(2, first_task);
-    int priority = 0;
-    for (int i = 0; i < 3*5; i++) {
+
+    for (;;) {
         tasks[id].stack_pointer = enter_user(tasks[id].stack_pointer);
         handle_swi(tasks[id].stack_pointer);
-        schedule();
+        id = next_scheduled_task();
 
-        priority = get_current_priority();
-        if (priority == -1)
-            break;
-
-        id = front_task(priority);
         #if DEBUG_ON
         bwprintf(COM2, "Got ID %d from PQ %d\r\n", id, priority);
         #endif
