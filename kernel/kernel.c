@@ -48,6 +48,12 @@ void schedule(void) {
     }
 }
 
+TASK* get_task(uint id)
+{
+    if(tasks[id].is_valid) return &tasks[id];
+    else return 0;
+}
+
 int Create(int priority, void (*function)())
 {
     int id = next_task_id();
@@ -63,7 +69,7 @@ int Create(int priority, void (*function)())
     struct frame *fr = (struct frame *)(stack_base - 16);
     tasks[id].is_valid = 1;
     tasks[id].t_id = id;
-    tasks[id].p_id = 0; // TODO Find way to pass down parent id.
+    tasks[id].p_id = MyTid(); // TODO Find way to pass down parent id.
     tasks[id].stack_base = stack_base;
     tasks[id].stack_pointer = stack_base - 16;
     tasks[id].pc = function;
@@ -89,6 +95,8 @@ int Create(int priority, void (*function)())
 
     bwprintf(COM2, "\r\nInitialized new task %d.\r\n", id);
     #endif
+
+    bwprintf(COM2, "Created: %d\r\n", id);
 
     return id;
 }

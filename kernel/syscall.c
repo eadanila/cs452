@@ -3,6 +3,7 @@
 #include "arm_lib.h"
 #include "syscall.h"
 #include "kernel.h"
+#include "pqueue.h"
 
 void print_regs(struct frame *fp) {
 
@@ -36,7 +37,9 @@ void handle_swi(uint *stack_pointer)
 
             break;
         case SYSCALL_EXIT:
+            #if DEBUG_ON
             bwprintf(COM2, "We made it to SYSCALL_EXIT\r\n");
+            #endif
             break;
         default:
             bwprintf(COM2, "What is a syscall for ants? %d?\r\n", syscall_id);
@@ -49,9 +52,25 @@ void Yield() {
     syscall(SYSCALL_YIELD);
 }
 
-void exit_handler() {
-    bwprintf(COM2, "exit handler\r\n");
+void Exit()
+{
+    // TODO Deallocate task as well
+    // bwprintf(COM2, "exit handler\r\n");
     syscall(SYSCALL_EXIT);
+}
+
+void exit_handler() {
+    Exit();
+}
+
+uint MyTid()
+{
+    return front_task(get_current_priority());
+}
+
+uint MyParentTid()
+{
+    return get_task(MyTid())->p_id;
 }
 
 void scream(uint sp)

@@ -42,6 +42,7 @@ int task_count;
 int next_task;
 TASK tasks[MAX_TASKS_ALLOWED];
 PQUEUE task_schedule[MIN_PRIORITY];
+TASK* get_task(uint id);
 
 int Create(int priority, void (*function)());
 
