@@ -19,5 +19,7 @@ void remove_task(int id, int pri);
 int pop_task(int pri);
 int front_task(int pri);
 
+int get_current_priority(void);
+
 #endif
 

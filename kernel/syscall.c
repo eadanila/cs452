@@ -2,6 +2,7 @@
 
 #include "arm_lib.h"
 #include "syscall.h"
+#include "kernel.h"
 
 void print_regs(struct frame *fp) {
 
@@ -9,7 +10,7 @@ void print_regs(struct frame *fp) {
 
     bwprintf(COM2, "cspr: %x\r\n", fp->cspr);
     bwprintf(COM2, "registers...\r\n");
-    uint *p = (uint *)(fp + 1);
+    uint *p = (uint *)(&(fp->cspr) + 1);
     for (int i = 0; i < 16; i++) {
         bwprintf(COM2, "%d: ", i);
         bwprintf(COM2, "r%d: %x\r\n", i, *(p+i));
@@ -25,12 +26,13 @@ void handle_swi(uint *stack_pointer)
     
     int syscall_id = fp->r0;
 
-    print_regs(fp);
+//    print_regs(fp);
                 
     switch(syscall_id)
     {
         case SYSCALL_YIELD:
             // all this should do is send the task to the end of the ready queue
+            schedule();
 
             break;
         case SYSCALL_EXIT:
@@ -52,7 +54,7 @@ void exit_handler() {
     syscall(SYSCALL_EXIT);
 }
 
-void scream()
+void scream(uint sp)
 {
-    bwputstr(COM2, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    bwprintf(COM2, "scream: %x\r\n", sp);
 }

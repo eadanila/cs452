@@ -88,3 +88,11 @@ int front_task(int pri) {
     return task_schedule[pri].head;
 }
 
+int get_current_priority(void) {
+    for (int i = 0; i < MIN_PRIORITY; i++) {
+        if (task_schedule[i].head > 0)
+            return i;
+    }
+    return -1;
+}
+

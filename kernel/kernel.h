@@ -32,13 +32,16 @@ struct __attribute__((__packed__)) task {
     uint *stack_base;
     uint *stack_pointer;
     void (*pc)(void);
+    int next;
 };
 typedef struct task TASK;
 
+void schedule(void);
+
 int task_count;
 int next_task;
-struct task tasks[MAX_TASKS_ALLOWED];
-pqueue task_schedule;
+TASK tasks[MAX_TASKS_ALLOWED];
+PQUEUE task_schedule[MIN_PRIORITY];
 
 int Create(int priority, void (*function)());
 
