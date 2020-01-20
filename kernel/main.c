@@ -30,6 +30,7 @@ void user_task(void) {
 
 void test_task(void)
 {
+    bwprintf(COM2, "\"Other task\" of priority %d reached.\r\n", get_current_priority());
     bwprintf(COM2, "Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
     Yield();
     bwprintf(COM2, "Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
@@ -56,6 +57,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < 3*5; i++) {
         tasks[id].stack_pointer = enter_user(tasks[id].stack_pointer);
         handle_swi(tasks[id].stack_pointer);
+        schedule();
 
         priority = get_current_priority();
         if (priority == -1)

@@ -33,16 +33,19 @@ void handle_swi(uint *stack_pointer)
     {
         case SYSCALL_YIELD:
             // all this should do is send the task to the end of the ready queue
-            schedule();
 
             break;
         case SYSCALL_EXIT:
             #if DEBUG_ON
             bwprintf(COM2, "We made it to SYSCALL_EXIT\r\n");
             #endif
+
+            // TODO Reclaim task resources as well?
+            get_task(MyTid())->is_valid = 0;
+            pop_task(get_current_priority());
             break;
         default:
-            bwprintf(COM2, "What is a syscall for ants? %d?\r\n", syscall_id);
+            bwprintf(COM2, "What is this, a syscall for ants? %d?\r\n", syscall_id);
             while(1);
         break;
     }
@@ -54,8 +57,6 @@ void Yield() {
 
 void Exit()
 {
-    // TODO Deallocate task as well
-    // bwprintf(COM2, "exit handler\r\n");
     syscall(SYSCALL_EXIT);
 }
 
