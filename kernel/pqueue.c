@@ -1,136 +1,90 @@
 #include "pqueue.h"
+#include "kernel.h"
 
-void init_pqueue(struct pqueue* pq)
-{
-    pq->next_available_node = MAX_TASKS_ALLOWED*(MIN_PRIORITY+1) -1;
-    for(int i = 0; i != MAX_TASKS_ALLOWED*(MIN_PRIORITY+1); i++) pq->available_nodes[i] = &(pq->nodes[i]);
-    for(int i = 0; i != MAX_TASKS_ALLOWED; i++) pq->id_to_node[i] = 0;
-    
-    for(int i = 0; i != MIN_PRIORITY+1; i++) pq->queue_fronts[i] = 0;
-    for(int i = 0; i != MIN_PRIORITY+1; i++) pq->queue_ends[i] = 0;
-    for(int i = 0; i != MIN_PRIORITY+1; i++) pq->queue_sizes[i] = 0;
+void init_pqueue() {
+    // decided to set head = tail = -1 for empty queue
+    // can be changed to something else, only here for sanity
+    // we should always be checking size for emptyiness anyway
+    for (int i = 0; i < MIN_PRIORITY; i++) {
+        task_schedule[i].head = -1;
+        task_schedule[i].tail = -1;
+        task_schedule[i].size = 0;
+    }
 }
 
-void add_task(pqueue* pq, int id, int priority)
-{
-    if(id >= MAX_TASKS_ALLOWED) return;
-    if(pq->next_available_node == -1) return;
-    
-    // "Allocate" new pq_node
-    pq_node* new_node = pq->available_nodes[pq->next_available_node];
-    pq->next_available_node--;
-    pq->id_to_node[id] = new_node;
-
-    new_node->id = id;
-    new_node->priority = priority;
-    new_node->next = 0;
-    new_node->prev = pq->queue_ends[priority];
-    
-    if(pq->queue_fronts[priority] == 0) pq->queue_fronts[priority] = new_node;
-    
-    pq->queue_ends[priority] = new_node;
-    pq->queue_sizes[priority]++;
-}
-
-void remove_task(pqueue* pq, int id, int priority)
-{
-    pq_node* node = pq->id_to_node[id];
-
-    if(node == 0) return;
-
-    if(node->next && node->prev)
-    {
-        node->next->prev = node->prev;
-        node->prev->next = node->next;
+void add_task(int id, int pri) {
+    if (task_schedule[pri].size == 0) {
+        // in a 1-item queue, head = tail
+        task_schedule[pri].head = id;
+        task_schedule[pri].tail = id;
+    } else {
+        // set the current tail's next to the new item ID
+        // then set the tail to the new item
+        int tail = task_schedule[pri].tail;
+        tasks[tail].next = id;
+        tasks[id].next = -1;
+        task_schedule[pri].tail = id;
     }
-    else if(node->next) // node->prev == 0
-    {
-        pq->queue_fronts[priority] = node->next;
-        node->next->prev = 0;
-    }
-    else if(node->prev) // node->next == 0
-    {
-        pq->queue_ends[priority] = node->prev;
-        node->prev->next = 0;
-    }
-    else
-    {
-        pq->queue_ends[priority] = 0;
-        pq->queue_fronts[priority] = 0;
+    task_schedule[pri].size += 1;
+} 
+
+void remove_task(int id, int pri) {
+    // assert(id == task_schedule[pri].head)
+    // assert(task_schedule[pri].size > 0)
+
+    // if the task is at the front, logic is same as pop and discard
+    if (task_schedule[pri].head == id) {
+        pop_task(pri);
+        return ;  
     }
 
-    // "Deallocate" the node
-    pq->next_available_node++;
-    pq->available_nodes[pq->next_available_node] = node;
-    pq->id_to_node[node->id] = 0;
-    pq->queue_sizes[priority]--;
-}
-
-int pop_task(pqueue* pq, int priority)
-{
-    if(pq->queue_fronts[priority] == 0) return 0;
+    // the queue only has one element, but it is not ID
+    if (task_schedule[pri].size == 1)
+        return ; // should we return something to indicate ID not in queue
     
-    pq_node* node = pq->queue_fronts[priority];
-    int r = node->id;
-
-    if(node->next) node->next->prev = 0;
-    pq->queue_fronts[priority] = node->next;
-
-    pq->next_available_node++;
-    pq->available_nodes[pq->next_available_node] = node;
-    pq->id_to_node[node->id] = 0;
-    pq->queue_sizes[priority]--;
-
-    return r;
+    // if we got here, the removed ID is at least the second element
+    // cur is initialized to that element, then we search for ID in the queue
+    int cur = tasks[task_schedule[pri].head].next;
+    int prev = task_schedule[pri].head;
+    while (cur != id) {
+        prev = cur;
+        cur = tasks[id].next;
+        if (!tasks[cur].is_valid)
+            return ;
+    }
+    // we've found the tasks we're looking for, stitch the queue over it
+    tasks[prev].next = tasks[cur].next;
+    task_schedule[pri].size -= 1;
 }
 
-int front_task(pqueue* pq, int priority)
-{   
-    if(pq->queue_fronts[priority] == 0) return 0;
-    return pq->queue_fronts[priority]->id;
+int pop_task(int pri) {
+    // noting to pop
+    if (task_schedule[pri].size == 0)
+        return -1;
+
+    // head at least is something since the queue is non-empty
+    int head = task_schedule[pri].head;
+    int next = -1;
+
+    // if the queue had 2+ items, next will be the head's next ID
+    // if the queue has only 1 item, tail must also become -1
+    if (task_schedule[pri].size >= 2) {
+        next = tasks[head].next;
+    } else {
+        task_schedule[pri].tail = -1;
+    }
+
+    // head = either -1 or the next of the previous head
+    task_schedule[pri].head = next;
+    task_schedule[pri].size -= 1;
+    return head;
 }
 
-uint pq_size(pqueue* pq, int priority)
-{
-    return pq->queue_sizes[priority];
+int front_task(int pri) {
+    // -1 if empty queue
+    // head otherwise
+    if (task_schedule[pri].size == 0)
+        return -1;
+    return task_schedule[pri].head;
 }
 
-// OLD PQUEUE IMPLEMENTATION
-// void init_pqueue(struct pqueue* pq)
-// {
-//     // Currently the queues must be initialized within kmain 
-//     for(int i = 0; i != MIN_PRIORITY+1; i++) pq->queue_starts[i] = 0;
-//     for(int i = 0; i != MIN_PRIORITY+1; i++) pq->queue_ends[i] = 0;
-//     for(int i = 0; i != MIN_PRIORITY+1; i++) pq->queue_sizes[i] = 0;
-// }
-
-// void add_task(pqueue* pq, int id, int priority)
-// {
-//     if(id >= MAX_TASKS_ALLOWED) return;
-    
-//     pq->queue_ends[priority] = (pq->queue_ends[priority] + 1)%(MIN_PRIORITY+1);
-//     pq->queues[priority][pq->queue_ends[priority]] = id;
-//     pq->queue_sizes[priority]++;
-// }
-
-// int remove_task(pqueue* pq, int priority)
-// {
-//     if(pq->queue_sizes[priority] == 0) return 0; // TODO Define 0 as invalid task
-
-//     int r = pq->queues[priority][pq->queue_starts[priority]];
-//     pq->queue_starts[priority] = (pq->queue_starts[priority] + 1)%(MIN_PRIORITY+1);
-//     pq->queue_sizes[priority]--;
-    
-//     return r;
-// }
-
-// int front_task(pqueue* pq, int priority)
-// {   
-//     if(pq->queue_sizes[priority] == 0) return 0;
-//     return pq->queues[priority][pq->queue_starts[priority]];
-// }
-
-// uint pq_size(pqueue* pq, int priority)
-// {
-//     return pq->queue_sizes[priority];
-// }
