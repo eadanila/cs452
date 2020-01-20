@@ -11,7 +11,7 @@ void handle_swi(uint *stack_pointer);
 void Yield();
 
 // Put "b scream" anywhere in assembly for basic debugging
-void scream();
+void scream(uint sp);
 
 void exit_handler();
 

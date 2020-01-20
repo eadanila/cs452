@@ -21,6 +21,27 @@ int next_task_id(void) {
     return next_task;
 }
 
+void schedule(void) {
+    int pri = get_current_priority();
+    if (pri == -1)
+        return;
+    add_task(pop_task(pri), pri);
+
+    // manually find and print highest priority queue for debug
+    for (int i = 0; i < MIN_PRIORITY; i++) {
+        if (task_schedule[i].size > 0) {
+            int id = task_schedule[i].head;
+            bwprintf(COM2, "Priority = %d\r\n", i);
+            while(id != -1) {
+                bwprintf(COM2, "%d -> ", id);
+                id = tasks[id].next;
+            }
+            bwprintf(COM2, "E\r\n");
+            return ;
+        }
+    }
+}
+
 int Create(int priority, void (*function)())
 {
     int id = next_task_id();
@@ -57,6 +78,8 @@ int Create(int priority, void (*function)())
         bwprintf(COM2, "i:%d,&i:%x\r\n", i, *(p + i));
     }
 
+    add_task(id, priority);
+
     bwprintf(COM2, "\r\nInitialized new task %d.\r\n", id);
 
     return id;
@@ -70,7 +93,7 @@ void kinit() {
     // Initialize kernel constants
     task_count = 0;
     next_task = 0;
-    init_pqueue(&task_schedule);
+    init_pqueue();
     
     for(int id = 0; id < MAX_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;
 

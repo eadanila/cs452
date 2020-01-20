@@ -62,3 +62,4 @@ kernel.elf: main.o arm_lib.o syscall.o kernel.o pqueue.o
 
 clean:
 	-rm -f kernel.elf *.s *.o
+
