@@ -3,6 +3,8 @@
 
 typedef unsigned int uint;
 
+#define DEBUG_ON 0
+
 #define MEMORY_END 0x2000000
 #define MEMORY_START 0x0100000
 #define TASK_MEMORY_SIZE 0x04000 // 16 KiB
@@ -13,5 +15,6 @@ typedef unsigned int uint;
 
 // Error codes
 #define OUT_OF_TASK_DESCRIPTORS -2
+
 
 #endif

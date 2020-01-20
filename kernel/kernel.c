@@ -31,12 +31,18 @@ void schedule(void) {
     for (int i = 0; i < MIN_PRIORITY; i++) {
         if (task_schedule[i].size > 0) {
             int id = task_schedule[i].head;
+            #if DEBUG_ON
             bwprintf(COM2, "Priority = %d\r\n", i);
+            #endif
             while(id != -1) {
+                #if DEBUG_ON
                 bwprintf(COM2, "%d -> ", id);
+                #endif
                 id = tasks[id].next;
             }
+            #if DEBUG_ON
             bwprintf(COM2, "E\r\n");
+            #endif
             return ;
         }
     }
@@ -73,14 +79,16 @@ int Create(int priority, void (*function)())
     fr->r14 = (uint)exit_handler;
     fr->cspr = (uint)CSPR_USER_MODE;
 
+    add_task(id, priority);
+
+    #if DEBUG_ON
     // TODO Remove
     for (int i = 0; i < 17; i++) {
         bwprintf(COM2, "i:%d,&i:%x\r\n", i, *(p + i));
     }
 
-    add_task(id, priority);
-
     bwprintf(COM2, "\r\nInitialized new task %d.\r\n", id);
+    #endif
 
     return id;
 }
@@ -111,6 +119,8 @@ void kinit() {
     tasks[0].p_id = 0;
     tasks[0].stack_pointer = (uint *)0x01000000;
     tasks[0].pc = 0x0; // what should this be for the kernel?
+    #if DEBUG_ON
     bwprintf(COM2, "\r\nKERNEL!\r\n");
+    #endif
 }
 

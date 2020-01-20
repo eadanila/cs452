@@ -41,11 +41,14 @@ int main(int argc, char *argv[]) {
             break;
 
         id = front_task(priority);
+        #if DEBUG_ON
         bwprintf(COM2, "Got ID %d from PQ %d\r\n", id, priority);
+        #endif
 
         if (id == -1)
             break;
     }
+    bwprintf(COM2, "Exit kernel");
     return 0;
 }
 
