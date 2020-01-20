@@ -1,17 +1,8 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-typedef unsigned int uint;
-
-#define MEMORY_END 0x2000000
-#define MEMORY_START 0x0100000
-#define TASK_MEMORY_SIZE 0x04000 // 16 KiB
-#define MAXIMUM_TASKS_ALLOWED 1024
-
-#define CSPR_USER_MODE 0x10
-
-// Error codes
-#define OUT_OF_TASK_DESCRIPTORS -2
+#include "pqueue.h"
+#include "constants.h"
 
 struct __attribute__((__packed__)) frame {
     uint cspr;
@@ -46,7 +37,8 @@ typedef struct task TASK;
 
 int task_count;
 int next_task;
-struct task tasks[MAXIMUM_TASKS_ALLOWED];
+struct task tasks[MAX_TASKS_ALLOWED];
+pqueue task_schedule;
 
 int Create(int priority, void (*function)());
 

@@ -48,11 +48,17 @@ kernel.s: kernel.c
 kernel.o: kernel.s
 	$(AS) $(ASFLAGS) -o kernel.o kernel.s
 
+pqueue.s: pqueue.c
+	$(CC) -S $(CFLAGS) pqueue.c
+
+pqueue.o: pqueue.s
+	$(AS) $(ASFLAGS) -o pqueue.o pqueue.s
+
 # arm_lib.o: arm_lib.s
 # 	$(AS) $(ASFLAGS) -o test.o arm_lib.s
 
-kernel.elf: main.o arm_lib.o syscall.o kernel.o
-	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o -lbwio -lgcc
+kernel.elf: main.o arm_lib.o syscall.o kernel.o pqueue.o
+	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o pqueue.o -lbwio -lgcc
 
 clean:
 	-rm -f kernel.elf *.s *.o
