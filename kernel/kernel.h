@@ -48,4 +48,7 @@ int Create(int priority, void (*function)());
 
 void kinit(void);
 
+int user_mode(void);
+void panic(void);
+
 #endif

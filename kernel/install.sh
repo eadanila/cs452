@@ -16,4 +16,4 @@ if [ -f /u/cs452/tftp/ARM/$u/kernel ]; then
     rm /u/cs452/tftp/ARM/$u/kernel
 fi
 
-make clean && make && cp kernel.elf /u/cs452/tftp/ARM/$u/kernel && chmod o=r /u/cs452/tftp/ARM/$u/kernel
+make clean && make debug && cp kernel.elf /u/cs452/tftp/ARM/$u/kernel && chmod o=r /u/cs452/tftp/ARM/$u/kernel
