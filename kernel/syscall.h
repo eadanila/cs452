@@ -6,7 +6,7 @@
 
 #include "kernel.h"
 
-void handle_swi(uint *stack_pointer);
+void handle_swi(int id);
 
 void Yield();
 void Exit();

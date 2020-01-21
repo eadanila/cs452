@@ -28,35 +28,6 @@ void add_task(int id, int pri) {
     task_schedule[pri].size += 1;
 } 
 
-void remove_task(int id, int pri) {
-    // assert(id == task_schedule[pri].head)
-    // assert(task_schedule[pri].size > 0)
-
-    // if the task is at the front, logic is same as pop and discard
-    if (task_schedule[pri].head == id) {
-        pop_task(pri);
-        return ;  
-    }
-
-    // the queue only has one element, but it is not ID
-    if (task_schedule[pri].size == 1)
-        return ; // should we return something to indicate ID not in queue
-    
-    // if we got here, the removed ID is at least the second element
-    // cur is initialized to that element, then we search for ID in the queue
-    int cur = tasks[task_schedule[pri].head].next;
-    int prev = task_schedule[pri].head;
-    while (cur != id) {
-        prev = cur;
-        cur = tasks[id].next;
-        if (!tasks[cur].is_valid)
-            return ;
-    }
-    // we've found the tasks we're looking for, stitch the queue over it
-    tasks[prev].next = tasks[cur].next;
-    task_schedule[pri].size -= 1;
-}
-
 int pop_task(int pri) {
     // noting to pop
     if (task_schedule[pri].size == 0)
@@ -77,6 +48,12 @@ int pop_task(int pri) {
     // head = either -1 or the next of the previous head
     task_schedule[pri].head = next;
     task_schedule[pri].size -= 1;
+
+    if (task_schedule[pri].size == 0) {
+        task_schedule[pri].head = -1;
+        task_schedule[pri].head = -1;
+    }
+
     return head;
 }
 
@@ -100,13 +77,11 @@ int get_current_priority(void) {
 // Define task id of 0 as invalid?
 int next_scheduled_task()
 {
-    return front_task(get_current_priority());
+    return pop_task(get_current_priority());
 }
 
-void cycle_schedule()
+void cycle_schedule(int pri)
 {
-    int p = get_current_priority();
-    int id = pop_task(p);
-    if(id == -1) return; // Do nothing if schedule is empty
-    add_task(id, p);
+    if (task_schedule[pri].size > 1)
+        add_task(pop_task(pri), pri);
 }

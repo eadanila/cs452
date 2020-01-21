@@ -70,6 +70,7 @@ int Create(int priority, void (*function)())
     tasks[id].is_valid = 1;
     tasks[id].t_id = id;
     tasks[id].p_id = MyTid(); // TODO Find way to pass down parent id.
+    tasks[id].priority = priority;
     tasks[id].stack_base = stack_base;
     tasks[id].stack_pointer = stack_base - 16;
     tasks[id].pc = function;
@@ -149,6 +150,9 @@ void kinit() {
     // Initialize kernel constants
     task_count = 0;
     next_task = 0;
+    
+    id = 0;
+
     init_pqueue();
     
     for(int id = 0; id < MAX_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;

@@ -21,9 +21,9 @@ void print_regs(struct frame *fp) {
 // User calls syscall then:
 // syscall (C) -> software_interupt (ARM) -> enter_kernel (ARM) -> handle_swi (C)
 
-void handle_swi(uint *stack_pointer)
+void handle_swi(int id)
 {
-    struct frame *fp = (struct frame *)stack_pointer;
+    struct frame *fp = (struct frame *)tasks[id].stack_pointer;
     
     int syscall_id = fp->r0;
 
@@ -33,20 +33,13 @@ void handle_swi(uint *stack_pointer)
     {
         case SYSCALL_YIELD:
             // All this should do is send the task to the end of the ready queue
-            cycle_schedule();
+            add_task(id, tasks[id].priority);
             break;
         case SYSCALL_EXIT:
-            #if DEBUG_ON
-            bwprintf(COM2, "We made it to SYSCALL_EXIT\r\n");
-            #endif
-
             // TODO Reclaim task resources as well?
-            get_task(MyTid())->is_valid = 0;
-            pop_task(get_current_priority());
             break;
         default:
             bwprintf(COM2, "What is this, a syscall for ants? %d?\r\n", syscall_id);
-            while(1);
         break;
     }
 }
@@ -66,7 +59,7 @@ void exit_handler() {
 
 uint MyTid()
 {
-    return front_task(get_current_priority());
+    return id;
 }
 
 uint MyParentTid()
