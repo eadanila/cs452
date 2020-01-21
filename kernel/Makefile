@@ -27,6 +27,21 @@ LDFLAGS = -static -e main -nmagic -T linker.ld -L ../lib -L $(XLIBDIR2)
 
 all: kernel.elf
 
+fatal: CFLAGS += -DVERBOSITY=1
+fatal: kernel.elf
+
+error: CFLAGS += -DVERBOSITY=2
+error: kernel.elf
+
+warn: CFLAGS += -DVERBOSITY=3
+warn: kernel.elf
+
+log: CLAGS += -DVERBOSITY=4
+log: kernel.elf
+
+debug: CFLAGS += -DVERBOSITY=5
+debug: kernel.elf
+
 arm_lib.o: arm_lib.asm
 	$(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
 

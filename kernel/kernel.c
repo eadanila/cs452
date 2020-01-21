@@ -101,6 +101,46 @@ int Create(int priority, void (*function)())
     return id;
 }
 
+int user_mode() {
+    asm("mrs r0, cpsr");
+    register int *proc asm("r0");
+    int mode = (int)proc & 0x1F;
+    return mode == 0x10;
+}
+
+void panic() {
+    // something bad has happened and now the kernel is in a panic
+    // print panic message and return to redboot
+    bwprintf(COM2, "\r\n");
+    bwprintf(COM2, "Did you ever hear the tragedy of Darth Plagueis The Wise?\r\n");
+    bwprintf(COM2, "I thought not. It’s not a story the Jedi would tell you.\r\n");
+    bwprintf(COM2, "It’s a Sith legend. Darth Plagueis was a Dark Lord of the\r\n");
+    bwprintf(COM2, "Sith, so powerful and so wise he could use the Force to\r\n");
+    bwprintf(COM2, "influence the midichlorians to create life. He had such a\r\n");
+    bwprintf(COM2, "knowledge of the dark side that he could even keep the\r\n");
+    bwprintf(COM2, "ones he cared about from dying. The dark side of the\r\n");
+    bwprintf(COM2, "Force is a pathway to many abilities some consider to be\r\n");
+    bwprintf(COM2, "unnatural. He became so powerful the only thing he was\r\n");
+    bwprintf(COM2, "afraid of was losing his power, which eventually, of\r\n");
+    bwprintf(COM2, "course, he did. Unfortunately, he taught his apprentice\r\n");
+    bwprintf(COM2, "everything he knew, then his apprentice killed him in his\r\n");
+    bwprintf(COM2, "sleep.\r\n\r\n");
+
+    bwprintf(COM2, "Ironic. He could save others from death, but not himself.\r\n");
+
+    // load the redboot address into lr and return to it
+    // redboot return address is 0x174C8
+    // ARMv4 has a limit on how large an immediate value
+    // can be moved into a register, so we need to load
+    // 0x174, shift 8 bits, then add 0xC8
+    asm("mov r0, #0x174");
+    asm("mov r1, #0x100");
+    asm("mul lr, r0, r1");
+    asm("add lr, #0xc8");
+    asm("bx lr");
+}
+
+
 void kinit() {
     // Initialize COM2
     bwsetspeed(COM2, 115200);
