@@ -5,10 +5,10 @@
 #include "syscall.h"
 #include "pqueue.h"
 
-void fuck(void);
+void unhandled_exception_handler(void);
 
 void print_lr(uint u) {
-    bwprintf(COM2, "shit's broke: %x\r\n", u);
+    bwprintf(COM2, "Uh oh, stinkyyy: %x\r\n", u);
     while (1);
 }
 
@@ -159,7 +159,7 @@ void kinit() {
 
     uint *p = (uint *)0x20;
     for (int i = 0; i < 8; i++) {
-        *p = (uint)fuck;
+        *p = (uint)unhandled_exception_handler;
         p = p + 1;
     }
     uint *handler_dest = (uint *)0x28;

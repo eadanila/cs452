@@ -3,7 +3,7 @@
 .global enter_user
 .global syscall
 .global init_task
-.global fuck
+.global unhandled_exception_handler
 
 arg_return_test:
     @mov r0, #23
@@ -97,7 +97,7 @@ init_task:
     sub r0, r0, #0
     mov pc, lr
 
-fuck:
+unhandled_exception_handler:
     mov r0, lr
     b print_lr
 
