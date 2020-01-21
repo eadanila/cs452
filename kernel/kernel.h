@@ -29,6 +29,7 @@ struct __attribute__((__packed__)) task {
     int is_valid;
     int t_id;
     int p_id;
+    int priority;
     uint *stack_base;
     uint *stack_pointer;
     void (*pc)(void);
@@ -43,6 +44,8 @@ int next_task;
 TASK tasks[MAX_TASKS_ALLOWED];
 PQUEUE task_schedule[MIN_PRIORITY];
 TASK* get_task(uint id);
+
+int id;
 
 int Create(int priority, void (*function)());
 

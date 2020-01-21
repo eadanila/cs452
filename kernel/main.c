@@ -5,36 +5,13 @@
 #include "syscall.h"
 #include "pqueue.h"
 
-void task_1(void) {
-    while(1) {
-        bwprintf(COM2, "task 1\r\n");
-        Yield();
-    }
-}
-
-void task_2(void) {
-    while(1) {
-        bwprintf(COM2, "task 2\r\n");
-        Yield();
-    }
-}
-
-void user_task(void) {
-    Create(0, task_1);
-    Create(0, task_2);
-    while(1) {
-        bwprintf(COM2, "hello, world\r\n");
-        Yield();
-    }
-}
+#include "logging.h"
 
 void test_task(void)
 {
-    bwprintf(COM2, "\"Other task\" of priority %d reached.\r\n", get_current_priority());
     bwprintf(COM2, "Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
     Yield();
     bwprintf(COM2, "Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
-    Exit();
 }
 
 void first_task(void)
@@ -47,23 +24,20 @@ void first_task(void)
     Create(1, test_task);
 
     bwprintf(COM2, "FirstUserTask: exiting\r\n");
-    Exit();
 }
 
 int main(int argc, char *argv[]) {
     kinit();
-    int id = Create(2, first_task);
+    id = Create(2, first_task);
+    assert(id == next_scheduled_task());
 
     for (;;) {
+        DEBUG("Got ID %d from PQ %d", id, tasks[id].priority);
         tasks[id].stack_pointer = enter_user(tasks[id].stack_pointer);
-        handle_swi(tasks[id].stack_pointer);
+        handle_swi(id);
         id = next_scheduled_task();
 
-        #if DEBUG_ON
-        bwprintf(COM2, "Got ID %d from PQ %d\r\n", id, priority);
-        #endif
-
-        if (id == -1)
+        if (id < 1)
             break;
     }
     bwprintf(COM2, "Kernel: exiting");
