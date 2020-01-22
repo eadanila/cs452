@@ -11,9 +11,9 @@ if [ ! -d /u/cs452/tftp/ARM/$u/ ]; then
     exit 1
 fi
 
-if [ -f /u/cs452/tftp/ARM/$u/kernel ]; then
-    echo "Removing old kernel from tftp server"
-    rm /u/cs452/tftp/ARM/$u/kernel
-fi
+export DESTDIR=/u/cs452/tftp/ARM/$u
 
-make clean && make debug && cp kernel.elf /u/cs452/tftp/ARM/$u/kernel && chmod o=r /u/cs452/tftp/ARM/$u/kernel
+make clean
+make debug
+make install
+

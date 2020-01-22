@@ -4,6 +4,8 @@
 #include "syscall.h"
 #include "kernel.h"
 #include "pqueue.h"
+#include "logging.h"
+#include "task.h"
 
 void print_regs(struct frame *fp) {
 
@@ -23,7 +25,8 @@ void print_regs(struct frame *fp) {
 
 void handle_swi(int id)
 {
-    struct frame *fp = (struct frame *)tasks[id].stack_pointer;
+    task t = get_task_by_id(id);
+    struct frame *fp = (struct frame *)t.stack_pointer;
     
     int syscall_id = fp->r0;
 
@@ -33,13 +36,15 @@ void handle_swi(int id)
     {
         case SYSCALL_YIELD:
             // All this should do is send the task to the end of the ready queue
-            add_task(id, tasks[id].priority);
+            set_task_state(id, TASK_READY);
+            add_task(id, t.priority);
             break;
         case SYSCALL_EXIT:
             // TODO Reclaim task resources as well?
+            set_task_state(id, TASK_ZOMBIE);
             break;
         default:
-            bwprintf(COM2, "What is this, a syscall for ants? %d?\r\n", syscall_id);
+            FATAL("What is this, a syscall for ants? %d?\r\n");
         break;
     }
 }
@@ -55,16 +60,6 @@ void Exit()
 
 void exit_handler() {
     Exit();
-}
-
-uint MyTid()
-{
-    return id;
-}
-
-uint MyParentTid()
-{
-    return get_task(MyTid())->p_id;
 }
 
 void scream(uint sp)

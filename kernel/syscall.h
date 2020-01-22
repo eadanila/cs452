@@ -10,8 +10,6 @@ void handle_swi(int id);
 
 void Yield();
 void Exit();
-uint MyTid();
-uint MyParentTid();
 
 // Put "b scream" anywhere in assembly for basic debugging
 void scream(uint sp);
