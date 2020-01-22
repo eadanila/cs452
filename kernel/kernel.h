@@ -1,6 +1,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
+#include "task.h"
 #include "pqueue.h"
 #include "constants.h"
 
@@ -25,25 +26,12 @@ struct __attribute__((__packed__)) frame {
 };
 typedef struct frame FRAME;
 
-struct __attribute__((__packed__)) task {
-    int is_valid;
-    int t_id;
-    int p_id;
-    int priority;
-    uint *stack_base;
-    uint *stack_pointer;
-    void (*pc)(void);
-    int next;
-};
-typedef struct task TASK;
-
 void schedule(void);
 
 int task_count;
 int next_task;
-TASK tasks[MAX_TASKS_ALLOWED];
+//task tasks[MAX_TASKS_ALLOWED];
 PQUEUE task_schedule[MIN_PRIORITY];
-TASK* get_task(uint id);
 
 int id;
 

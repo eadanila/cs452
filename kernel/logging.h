@@ -2,6 +2,8 @@
 #define LOGGING_H 
 
 #include <bwio.h>
+#include "syscall.h"
+
 
 #define LOGLEVEL_NONE 0  // logging off
 
@@ -15,9 +17,11 @@
 #define LOGLEVEL_LOG 4 // above + general logs
 #define LOGLEVEL_DEBUG 5 // above + debug messages
 
+
 #ifndef VERBOSITY
     #define VERBOSITY LOGLEVEL_NONE
 #endif
+
 
 #define PRINTLOG(type, msg, ...) { \
     bwprintf(COM2, "%s:<%s:%d> - ", type, __FILE__, __LINE__); \
@@ -30,26 +34,26 @@
     #define FATAL(msg, ...) { \
         PRINTLOG("FATAL", msg, ##__VA_ARGS__) \
         if (!user_mode()) panic(); \
-        syscall(SYSCALL_EXIT); \
+        Exit(); \
     }
 
     #define assert(cond) { \
         if (!(cond)) { \
             PRINTLOG("FATAL - ASSERT FAILED", #cond) \
             if (!user_mode()) panic(); \
-            syscall(SYSCALL_EXIT); \
+            Exit(); \
         } \
     }
 #else
     #define FATAL(msg, ...) { \
         if (!user_mode()) panic(); \
-        syscall(SYSCALL_EXIT); \
+        Exit(); \
     }
 
     #define assert(cond, ...) { \
         if (!(cond)) { \
             if (!user_mode()) panic(); \
-            syscall(SYSCALL_EXIT); \
+            Exit(); \
         } \
     }
 #endif

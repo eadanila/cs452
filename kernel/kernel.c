@@ -5,6 +5,9 @@
 #include "syscall.h"
 #include "pqueue.h"
 
+#include "logging.h"
+#include "task.h"
+
 void unhandled_exception_handler(void);
 
 void print_lr(uint u) {
@@ -38,7 +41,7 @@ void schedule(void) {
                 #if DEBUG_ON
                 bwprintf(COM2, "%d -> ", id);
                 #endif
-                id = tasks[id].next;
+                id = get_task_next_id(id);
             }
             #if DEBUG_ON
             bwprintf(COM2, "E\r\n");
@@ -48,60 +51,35 @@ void schedule(void) {
     }
 }
 
-TASK* get_task(uint id)
-{
-    if(tasks[id].is_valid) return &tasks[id];
-    else return 0;
-}
-
 int Create(int priority, void (*function)())
 {
-    int id = next_task_id();
+    int p_id = get_running_task();
+    int id = allocate_task(p_id, priority, function);
     
     if(id == OUT_OF_TASK_DESCRIPTORS) 
     {
-        bwprintf(COM2, "\r\nMaximum number of tasks reached!\r\n");
+        WARN("Maximum number of tasks reached!");
         return id;
     }
-    
-    uint *stack_base = (uint *)(MEMORY_START+id*TASK_MEMORY_SIZE);
 
-    struct frame *fr = (struct frame *)(stack_base - 16);
-    tasks[id].is_valid = 1;
-    tasks[id].t_id = id;
-    tasks[id].p_id = MyTid(); // TODO Find way to pass down parent id.
-    tasks[id].priority = priority;
-    tasks[id].stack_base = stack_base;
-    tasks[id].stack_pointer = stack_base - 16;
-    tasks[id].pc = function;
+    task t = get_task_by_id(id);
+    struct frame *f = (struct frame *)(t.stack_base - 16);
 
-    // TODO Remove
-    uint *p = ((uint *)stack_base) - 16;
-    for (int i = 0; i < 17; i++) {
-        *(p+i) = 0;
-    }
+    f->r13 = (uint)t.stack_base;
+    f->r15 = (uint)function;
+    f->r14 = (uint)exit_handler;
+    f->cspr = (uint)CSPR_USER_MODE;
 
-    fr->r15 = (uint)function;
-    fr->r13 = (uint)stack_base;
-    fr->r14 = (uint)exit_handler;
-    fr->cspr = (uint)CSPR_USER_MODE;
+    set_task_stack_pointer(id, (uint *)t.stack_base - 16);
 
     add_task(id, priority);
 
-    #if DEBUG_ON
-    // TODO Remove
-    for (int i = 0; i < 17; i++) {
-        bwprintf(COM2, "i:%d,&i:%x\r\n", i, *(p + i));
-    }
-
-    bwprintf(COM2, "\r\nInitialized new task %d.\r\n", id);
-    #endif
-
-    bwprintf(COM2, "Created: %d\r\n", id);
+    print("Created: %d\r\n", id);
 
     return id;
 }
 
+// TODO: inline assembly to asm_lib
 int user_mode() {
     asm("mrs r0, cpsr");
     register int *proc asm("r0");
@@ -129,6 +107,7 @@ void panic() {
 
     bwprintf(COM2, "Ironic. He could save others from death, but not himself.\r\n");
 
+    // TODO: inline assembly to asm_lib
     // load the redboot address into lr and return to it
     // redboot return address is 0x174C8
     // ARMv4 has a limit on how large an immediate value
@@ -153,10 +132,10 @@ void kinit() {
     
     id = 0;
 
+    init_task_list();
+
     init_pqueue();
     
-    for(int id = 0; id < MAX_TASKS_ALLOWED; id++) tasks[id].is_valid = 0;
-
     uint *p = (uint *)0x20;
     for (int i = 0; i < 8; i++) {
         *p = (uint)unhandled_exception_handler;
@@ -167,10 +146,6 @@ void kinit() {
 
 
     // init kernel task
-    tasks[0].t_id = 0;
-    tasks[0].p_id = 0;
-    tasks[0].stack_pointer = (uint *)0x01000000;
-    tasks[0].pc = 0x0; // what should this be for the kernel?
     #if DEBUG_ON
     bwprintf(COM2, "\r\nKERNEL!\r\n");
     #endif

@@ -69,11 +69,24 @@ pqueue.s: pqueue.c
 pqueue.o: pqueue.s
 	$(AS) $(ASFLAGS) -o pqueue.o pqueue.s
 
+task.s: task.c
+	$(CC) -S $(CFLAGS) task.c
+
+task.o: task.s
+	$(AS) $(ASFLAGS) -o task.o task.s
+
 # arm_lib.o: arm_lib.s
+#
 # 	$(AS) $(ASFLAGS) -o test.o arm_lib.s
 
-kernel.elf: main.o arm_lib.o syscall.o kernel.o pqueue.o
-	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o pqueue.o -lbwio -lgcc
+kernel.elf: main.o arm_lib.o syscall.o kernel.o pqueue.o task.o
+	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o pqueue.o task.o -lbwio -lgcc
+
+install:
+	-touch $(DESTDIR)/kernel
+	-rm $(DESTDIR)/kernel
+	-cp kernel.elf $(DESTDIR)/kernel
+	-chmod o=r $(DESTDIR)/kernel
 
 clean:
 	-rm -f kernel.elf *.s *.o
