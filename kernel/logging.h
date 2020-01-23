@@ -2,8 +2,8 @@
 #define LOGGING_H 
 
 #include <bwio.h>
+#include "arm_lib.h"
 #include "syscall.h"
-
 
 #define LOGLEVEL_NONE 0  // logging off
 

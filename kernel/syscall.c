@@ -37,7 +37,7 @@ void handle_swi(int id)
         case SYSCALL_YIELD:
             // All this should do is send the task to the end of the ready queue
             set_task_state(id, TASK_READY);
-            add_task(id, t.priority);
+            push_task(id);
             break;
         case SYSCALL_EXIT:
             // TODO Reclaim task resources as well?

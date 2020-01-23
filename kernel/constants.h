@@ -10,11 +10,13 @@ typedef unsigned int uint;
 #define TASK_MEMORY_SIZE 0x04000 // 16 KiB
 #define MAX_TASKS_ALLOWED 1024
 #define MIN_PRIORITY 7
+#define PRIORITY_COUNT (MIN_PRIORITY + 1)
 
 #define CSPR_USER_MODE 0x10
 
 // Error codes
 #define OUT_OF_TASK_DESCRIPTORS -2
+#define INVALID_PRIORITY -1
 
 
 #endif

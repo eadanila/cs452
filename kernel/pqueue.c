@@ -2,92 +2,76 @@
 #include "kernel.h"
 #include "task.h"
 
+
 #include "logging.h"
 
 void init_pqueue() {
-    // decided to set head = tail = -1 for empty queue
-    // can be changed to something else, only here for sanity
-    // we should always be checking size for emptyiness anyway
-    for (int i = 0; i < MIN_PRIORITY; i++) {
-        task_schedule[i].head = -1;
-        task_schedule[i].tail = -1;
-        task_schedule[i].size = 0;
-    }
+    // Initialize all nodes as free
+    for (int i = 0; i < MAX_TASKS_ALLOWED - 1; i++) task_schedule.data[i].next = &task_schedule.data[i+1];
+    task_schedule.data[MAX_TASKS_ALLOWED-1].next = 0;
+
+    for (int i = 0; i < PRIORITY_COUNT; i++)
+    {
+        task_schedule.queues[i].head = 0;
+        task_schedule.queues[i].tail = 0;
+    } 
+    task_schedule.free = &task_schedule.data[0];
 }
 
-void add_task(int id, int pri) {
+// Return the highest priority level occupied by a task.
+// Return priority 0 if all priority levels are unoccupied.
+int highest_priorty()
+{
+    for (int i = 0; i < PRIORITY_COUNT; i++) { if(task_schedule.queues[i].head != 0) return i; }
+    return 0;
+}
+
+void push_task(uint id)
+{
+    assert(task_schedule.free != 0) // Ran out of tasks!
+
+    int pri = get_task_by_id(id).priority;
     DEBUG("Adding task %d to queue %d", id, pri);
-    if (task_schedule[pri].size == 0) {
-        // in a 1-item queue, head = tail
-        task_schedule[pri].head = id;
-        task_schedule[pri].tail = id;
-    } else {
-        // set the current tail's next to the new item ID
-        // then set the tail to the new item
-        int tail = task_schedule[pri].tail;
-        set_task_next_id(tail, id);
-        set_task_next_id(id, -1);
-        task_schedule[pri].tail = id;
-    }
-    task_schedule[pri].size += 1;
-} 
 
-int pop_task(int pri) {
-    // noting to pop
-    if (task_schedule[pri].size == 0)
-        return -1;
-
-    // head at least is something since the queue is non-empty
-    int head = task_schedule[pri].head;
-    int next = -1;
-
-    // if the queue had 2+ items, next will be the head's next ID
-    // if the queue has only 1 item, tail must also become -1
-    if (task_schedule[pri].size >= 2) {
-        next = get_task_next_id(head);
-    } else {
-        task_schedule[pri].tail = -1;
-    }
-
-    // head = either -1 or the next of the previous head
-    task_schedule[pri].head = next;
-    task_schedule[pri].size -= 1;
-
-    if (task_schedule[pri].size == 0) {
-        task_schedule[pri].head = -1;
-        task_schedule[pri].head = -1;
-    }
-
-    return head;
+    PQUEUE_NODE *tail = task_schedule.queues[pri].tail;
+    PQUEUE_NODE *new_node = task_schedule.free;
+    task_schedule.free = task_schedule.free->next;
+    
+    new_node->id = id;
+    new_node->next = 0;
+    if(tail == 0)
+    {
+        // Empty queue
+        task_schedule.queues[pri].tail = new_node;
+        task_schedule.queues[pri].head = new_node;
+    } 
+    else
+    {
+        task_schedule.queues[pri].tail->next = new_node;
+        task_schedule.queues[pri].tail = new_node;
+    } 
 }
 
-int front_task(int pri) {
-    // -1 if empty queue
-    // head otherwise
-    if (task_schedule[pri].size == 0)
-        return -1;
-    return task_schedule[pri].head;
-}
-
-int get_current_priority(void) {
-    for (int i = 0; i < MIN_PRIORITY; i++) {
-        if (task_schedule[i].size > 0)
-            return i;
-    }
-    return -1;
-}
-
-// TODO Change -1 in returns to 0 and uint 
-// Define task id of 0 as invalid?
-int next_scheduled_task()
+int pop_task()
 {
-    DEBUG("Current priority: %d", get_current_priority());
-    return pop_task(get_current_priority());
+    int pri = highest_priorty();
+    if(task_schedule.queues[pri].head == 0) return -1; // No tasks on any priorty queue
+    int id = task_schedule.queues[pri].head->id;
+
+    PQUEUE_NODE *new_head = task_schedule.queues[pri].head->next;
+    task_schedule.queues[pri].head->next = task_schedule.free;
+    task_schedule.free = task_schedule.queues[pri].head;
+    task_schedule.queues[pri].head = new_head;
+    if(new_head == 0) task_schedule.queues[pri].tail = 0;
+
+    return id;
 }
 
-void cycle_schedule(int pri)
+int peek_task()
 {
-    if (task_schedule[pri].size > 1)
-        add_task(pop_task(pri), pri);
-}
+    int pri = highest_priorty();
+    if(task_schedule.queues[pri].head == 0) return -1; // No tasks on any priorty queue
+    int id = task_schedule.queues[pri].head->id;
 
+    return id;
+}
