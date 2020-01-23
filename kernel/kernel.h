@@ -26,12 +26,10 @@ struct __attribute__((__packed__)) frame {
 };
 typedef struct frame FRAME;
 
-void schedule(void);
-
 int task_count;
 int next_task;
 //task tasks[MAX_TASKS_ALLOWED];
-PQUEUE task_schedule[MIN_PRIORITY];
+PQUEUE task_schedule;
 
 int id;
 

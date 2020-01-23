@@ -30,7 +30,8 @@ void first_task(void)
 int main(int argc, char *argv[]) {
     kinit();
     id = Create(2, first_task);
-    int sid = next_scheduled_task();
+
+    int sid = pop_task();
     if (id != sid)
         FATAL("Task not successfully scheduled. Got %d, expected %d", sid, id);
     set_running_task(id);
@@ -39,7 +40,8 @@ int main(int argc, char *argv[]) {
         DEBUG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
         handle_swi(id);
-        id = next_scheduled_task();
+
+        id = pop_task();
         set_running_task(id);
 
         if (id < 1)

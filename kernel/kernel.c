@@ -24,35 +24,10 @@ int next_task_id(void) {
     return next_task;
 }
 
-void schedule(void) {
-    int pri = get_current_priority();
-    if (pri == -1)
-        return;
-    add_task(pop_task(pri), pri);
-
-    // manually find and print highest priority queue for debug
-    for (int i = 0; i < MIN_PRIORITY; i++) {
-        if (task_schedule[i].size > 0) {
-            int id = task_schedule[i].head;
-            #if DEBUG_ON
-            bwprintf(COM2, "Priority = %d\r\n", i);
-            #endif
-            while(id != -1) {
-                #if DEBUG_ON
-                bwprintf(COM2, "%d -> ", id);
-                #endif
-                id = get_task_next_id(id);
-            }
-            #if DEBUG_ON
-            bwprintf(COM2, "E\r\n");
-            #endif
-            return ;
-        }
-    }
-}
-
 int Create(int priority, void (*function)())
 {
+    if(priority < 0 || priority > MIN_PRIORITY) return INVALID_PRIORITY;
+
     int p_id = get_running_task();
     int id = allocate_task(p_id, priority, function);
     
@@ -72,7 +47,7 @@ int Create(int priority, void (*function)())
 
     set_task_stack_pointer(id, (uint *)t.stack_base - 16);
 
-    add_task(id, priority);
+    push_task(id);
 
     print("Created: %d\r\n", id);
 
