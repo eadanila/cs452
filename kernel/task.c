@@ -2,7 +2,7 @@
 #include "logging.h"
 
 int running_task;
-task task_list[MAX_TASKS_ALLOWED];
+Task task_list[MAX_TASKS_ALLOWED];
 
 int __is_defined_task_state(int state) {
     int valid = (state == TASK_INVALID);
@@ -41,6 +41,14 @@ void set_task_state(int id, int state) {
     if (state == TASK_RUNNING) {
         set_running_task(id);
         return ;
+    }
+
+    if (state == TASK_ZOMBIE) {
+        for (int i = 0; i < MAX_TASKS_ALLOWED; i++) {
+            if (task_list[i].p_id == id) {
+                task_list[i].p_id = PARENT_ZOMBIE;
+            }
+        }
     }
 
     if (id == running_task) {
@@ -98,7 +106,7 @@ int get_running_task(void) {
     return running_task;
 }
 
-task get_task_by_id(int id) {
+Task get_task_by_id(int id) {
     assert(is_valid_task(id));
 
     return task_list[id];

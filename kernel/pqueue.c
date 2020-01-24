@@ -4,7 +4,7 @@
 
 #include "logging.h"
 
-pqueue task_schedule;
+PQueue task_schedule;
 
 void init_pqueue() {
     // Initialize all nodes as free
@@ -34,8 +34,8 @@ void push_task(uint id)
     int pri = get_task_by_id(id).priority;
     DEBUG("Adding task %d to queue %d", id, pri);
 
-    pqueue_node *tail = task_schedule.queues[pri].tail;
-    pqueue_node *new_node = task_schedule.free;
+    PQueue_Node *tail = task_schedule.queues[pri].tail;
+    PQueue_Node *new_node = task_schedule.free;
     task_schedule.free = task_schedule.free->next;
     
     new_node->id = id;
@@ -59,7 +59,7 @@ int pop_task()
     if(task_schedule.queues[pri].head == 0) return -1; // No tasks on any priorty queue
     int id = task_schedule.queues[pri].head->id;
 
-    pqueue_node *new_head = task_schedule.queues[pri].head->next;
+    PQueue_Node *new_head = task_schedule.queues[pri].head->next;
     task_schedule.queues[pri].head->next = task_schedule.free;
     task_schedule.free = task_schedule.queues[pri].head;
     task_schedule.queues[pri].head = new_head;
