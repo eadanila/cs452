@@ -96,7 +96,7 @@ int kcreate(int priority, uint function) {
     if(t_id == OUT_OF_TASK_DESCRIPTORS)
     {
         WARN("Maximum number of tasks reached!");
-        return t_id;
+        return OUT_OF_TASK_DESCRIPTORS;
     }
 
     task t = get_task_by_id(t_id);
