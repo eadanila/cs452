@@ -154,7 +154,7 @@
 
 
 #if VERBOSITY >= LOGLEVEL_DEBUG
-    #define DEBUG(msg, ...) { PRINTLOGCOLOR(BLUE_TEXT, "DEBUG", msg, ##__VA_ARGS__) }
+    #define DEBUG(msg, ...) { PRINTLOGCOLOR(MAGENTA_TEXT, "DEBUG", msg, ##__VA_ARGS__) }
 #else
     #define DEBUG(msg, ...) { }
 #endif

@@ -12,6 +12,7 @@ void test_task(void)
     print("Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
     Yield();
     print("Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
+    Exit();
 }
 
 void first_task(void)
@@ -25,6 +26,8 @@ void first_task(void)
     Create(1, test_task);
 
     print("FirstUserTask: exiting\r\n");
+
+    Exit();
 }
 
 int main(int argc, char *argv[]) {
