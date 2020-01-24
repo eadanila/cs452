@@ -7,3 +7,7 @@ To build, use the following commands at the root of the repository on a student 
 
 To run, use the following command in redboot: 
 	load ARM/vscurtu/k1/kernel; go
+
+Group members:
+Victor Scurtu (vscurtu: 20678028)
+Alex Danila (eadanila:  20516806)
