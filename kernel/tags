@@ -1,0 +1,196 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+AR	Makefile	/^AR = $(XBINDIR)\/arm-none-eabi-ar$/;"	m
+ARM_LIB_H	arm_lib.h	2;"	d
+AS	Makefile	/^AS = $(XBINDIR)\/arm-none-eabi-as$/;"	m
+CC	Makefile	/^CC = $(XBINDIR)\/arm-none-eabi-gcc$/;"	m
+CFLAGS	Makefile	/^CFLAGS = -g -S -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I..\/include$/;"	m
+CONSTANTS_H	constants.h	2;"	d
+CSPR_USER_MODE	constants.h	17;"	d
+Create	kernel.c	/^int Create(int priority, void (*function)())$/;"	f
+Create	kernel.s	/^Create:$/;"	l
+DEBUG	logging.h	84;"	d
+DEBUG	logging.h	86;"	d
+DEBUG_ON	constants.h	8;"	d
+ERROR	logging.h	63;"	d
+ERROR	logging.h	65;"	d
+Exit	syscall.c	/^void Exit()$/;"	f
+Exit	syscall.s	/^Exit:$/;"	l
+FATAL	logging.h	34;"	d
+FATAL	logging.h	48;"	d
+FRAME	kernel.h	/^typedef struct frame FRAME;$/;"	t	typeref:struct:frame
+INVALID_PRIORITY	constants.h	24;"	d
+IVT_BASE_ADDR	constants.h	19;"	d
+IVT_SWI_ADDR	constants.h	20;"	d
+KERNEL_H	kernel.h	2;"	d
+KNAME	constants.h	4;"	d
+LD	Makefile	/^LD = $(XBINDIR)\/arm-none-eabi-ld$/;"	m
+LDFLAGS	Makefile	/^LDFLAGS = -static -e main -nmagic -T linker.ld -L ..\/lib -L $(XLIBDIR2)$/;"	m
+LOG	logging.h	77;"	d
+LOG	logging.h	79;"	d
+LOGGING_H	logging.h	2;"	d
+LOGLEVEL_DEBUG	logging.h	18;"	d
+LOGLEVEL_ERROR	logging.h	15;"	d
+LOGLEVEL_FATAL	logging.h	14;"	d
+LOGLEVEL_LOG	logging.h	17;"	d
+LOGLEVEL_NONE	logging.h	8;"	d
+LOGLEVEL_WARN	logging.h	16;"	d
+MAX_TASKS_ALLOWED	constants.h	13;"	d
+MEMORY_END	constants.h	10;"	d
+MEMORY_START	constants.h	11;"	d
+MIN_PRIORITY	constants.h	14;"	d
+MyParentTid	task.c	/^int MyParentTid(void) {$/;"	f
+MyParentTid	task.s	/^MyParentTid:$/;"	l
+MyTid	task.c	/^int MyTid(void) {$/;"	f
+MyTid	task.s	/^MyTid:$/;"	l
+OUT_OF_TASK_DESCRIPTORS	constants.h	23;"	d
+PQUEUE_H	pqueue.h	2;"	d
+PRINTLOG	logging.h	26;"	d
+PRIORITY_COUNT	constants.h	15;"	d
+SYSCALL_EXIT	syscall.h	5;"	d
+SYSCALL_H	syscall.h	2;"	d
+SYSCALL_YIELD	syscall.h	4;"	d
+TASK_H	task.h	2;"	d
+TASK_INVALID	task.h	5;"	d
+TASK_MEMORY_SIZE	constants.h	12;"	d
+TASK_READY	task.h	6;"	d
+TASK_RUNNING	task.h	7;"	d
+TASK_ZOMBIE	task.h	8;"	d
+VERBOSITY	logging.h	22;"	d
+WARN	logging.h	70;"	d
+WARN	logging.h	72;"	d
+XBINDIR	Makefile	/^XBINDIR=$(XDIR)\/bin$/;"	m
+XDIR	Makefile	/^XDIR=\/u\/cs452\/public\/xdev$/;"	m
+XLIBDIR1	Makefile	/^XLIBDIR1=$(XDIR)\/arm-none-eabi\/lib$/;"	m
+XLIBDIR2	Makefile	/^XLIBDIR2=$(XDIR)\/lib\/gcc\/arm-none-eabi\/9.2.0$/;"	m
+Yield	syscall.c	/^void Yield() {$/;"	f
+Yield	syscall.s	/^Yield:$/;"	l
+__get_next_available_id	task.c	/^int __get_next_available_id() {$/;"	f
+__get_next_available_id	task.s	/^__get_next_available_id:$/;"	l
+__is_defined_task_state	task.c	/^int __is_defined_task_state(int state) {$/;"	f
+__is_defined_task_state	task.s	/^__is_defined_task_state:$/;"	l
+allocate_task	task.c	/^int allocate_task(int p_id, int pri, void (*pc)(void)) {$/;"	f
+allocate_task	task.s	/^allocate_task:$/;"	l
+arg_return_test	arm_lib.asm	/^arg_return_test:$/;"	l
+assert	logging.h	40;"	d
+assert	logging.h	53;"	d
+cspr	kernel.h	/^    uint cspr;$/;"	m	struct:frame
+data	pqueue.h	/^    struct pqueue_node data[MAX_TASKS_ALLOWED];$/;"	m	struct:pqueue	typeref:struct:pqueue::pqueue_node
+enter_kernel	arm_lib.asm	/^enter_kernel:$/;"	l
+enter_user	arm_lib.asm	/^enter_user:$/;"	l
+exit_code	task.h	/^    int exit_code;$/;"	m	struct:task
+exit_handler	syscall.c	/^void exit_handler() {$/;"	f
+exit_handler	syscall.s	/^exit_handler:$/;"	l
+first_task	main.c	/^void first_task(void)$/;"	f
+first_task	main.s	/^first_task:$/;"	l
+frame	kernel.h	/^struct __attribute__((__packed__)) frame {$/;"	s
+free	pqueue.h	/^    pqueue_node *free;$/;"	m	struct:pqueue
+free_task	task.c	/^void free_task(int id) {$/;"	f
+free_task	task.s	/^free_task:$/;"	l
+get_cpsr	arm_lib.asm	/^get_cpsr:$/;"	l
+get_running_task	task.c	/^int get_running_task(void) {$/;"	f
+get_running_task	task.s	/^get_running_task:$/;"	l
+get_task_by_id	task.c	/^task get_task_by_id(int id) {$/;"	f
+get_task_by_id	task.s	/^get_task_by_id:$/;"	l
+get_task_exit_code	task.c	/^int get_task_exit_code(int id) {$/;"	f
+get_task_exit_code	task.s	/^get_task_exit_code:$/;"	l
+get_task_next_id	task.c	/^int get_task_next_id(int id) {$/;"	f
+get_task_next_id	task.s	/^get_task_next_id:$/;"	l
+get_task_stack_pointer	task.c	/^unsigned int *get_task_stack_pointer(int id) {$/;"	f
+get_task_stack_pointer	task.s	/^get_task_stack_pointer:$/;"	l
+get_task_state	task.c	/^int get_task_state(int id) {$/;"	f
+get_task_state	task.s	/^get_task_state:$/;"	l
+handle_swi	syscall.c	/^void handle_swi(int id)$/;"	f
+handle_swi	syscall.s	/^handle_swi:$/;"	l
+head	pqueue.h	/^    pqueue_node* head;$/;"	m	struct:pqueue_queue
+highest_priorty	pqueue.c	/^int highest_priorty()$/;"	f
+highest_priorty	pqueue.s	/^highest_priorty:$/;"	l
+id	pqueue.h	/^    uint id;$/;"	m	struct:pqueue_node
+init_pqueue	pqueue.c	/^void init_pqueue() {$/;"	f
+init_pqueue	pqueue.s	/^init_pqueue:$/;"	l
+init_task	arm_lib.asm	/^init_task:$/;"	l
+init_task_list	task.c	/^void init_task_list(void) {$/;"	f
+init_task_list	task.s	/^init_task_list:$/;"	l
+is_valid_task	task.c	/^int is_valid_task(int id) {$/;"	f
+is_valid_task	task.s	/^is_valid_task:$/;"	l
+kinit	kernel.c	/^void kinit() {$/;"	f
+kinit	kernel.s	/^kinit:$/;"	l
+main	main.c	/^int main(int argc, char *argv[]) {$/;"	f
+main	main.s	/^main:$/;"	l
+next	pqueue.h	/^    pqueue_node *next;$/;"	m	struct:pqueue_node
+next_id	task.h	/^    int next_id;$/;"	m	struct:task
+p_id	task.h	/^    int p_id;$/;"	m	struct:task
+panic	kernel.c	/^void panic() {$/;"	f
+panic	kernel.s	/^panic:$/;"	l
+pc	task.h	/^    void (*pc)(void);$/;"	m	struct:task
+peek_task	pqueue.c	/^int peek_task()$/;"	f
+peek_task	pqueue.s	/^peek_task:$/;"	l
+pop_task	pqueue.c	/^int pop_task()$/;"	f
+pop_task	pqueue.s	/^pop_task:$/;"	l
+pqueue	pqueue.h	/^struct pqueue$/;"	s
+pqueue	pqueue.h	/^typedef struct pqueue pqueue;$/;"	t	typeref:struct:pqueue
+pqueue_node	pqueue.h	/^struct pqueue_node$/;"	s
+pqueue_node	pqueue.h	/^typedef struct pqueue_node pqueue_node;$/;"	t	typeref:struct:pqueue_node
+pqueue_queue	pqueue.h	/^struct pqueue_queue$/;"	s
+pqueue_queue	pqueue.h	/^typedef struct pqueue_queue pqueue_queue;$/;"	t	typeref:struct:pqueue_queue
+print	logging.h	90;"	d
+print_lr	kernel.c	/^void print_lr(uint u) {$/;"	f
+print_lr	kernel.s	/^print_lr:$/;"	l
+print_regs	syscall.c	/^void print_regs(struct frame *fp) {$/;"	f
+print_regs	syscall.s	/^print_regs:$/;"	l
+priority	task.h	/^    int priority;$/;"	m	struct:task
+push_task	pqueue.c	/^void push_task(uint id)$/;"	f
+push_task	pqueue.s	/^push_task:$/;"	l
+queues	pqueue.h	/^    pqueue_queue queues[PRIORITY_COUNT];$/;"	m	struct:pqueue
+r0	kernel.h	/^    uint r0;$/;"	m	struct:frame
+r1	kernel.h	/^    uint r1;$/;"	m	struct:frame
+r10	kernel.h	/^    uint r10;$/;"	m	struct:frame
+r11	kernel.h	/^    uint r11;$/;"	m	struct:frame
+r12	kernel.h	/^    uint r12;$/;"	m	struct:frame
+r13	kernel.h	/^    uint r13;$/;"	m	struct:frame
+r14	kernel.h	/^    uint r14;$/;"	m	struct:frame
+r15	kernel.h	/^    uint r15;$/;"	m	struct:frame
+r2	kernel.h	/^    uint r2;$/;"	m	struct:frame
+r3	kernel.h	/^    uint r3;$/;"	m	struct:frame
+r4	kernel.h	/^    uint r4;$/;"	m	struct:frame
+r5	kernel.h	/^    uint r5;$/;"	m	struct:frame
+r6	kernel.h	/^    uint r6;$/;"	m	struct:frame
+r7	kernel.h	/^    uint r7;$/;"	m	struct:frame
+r8	kernel.h	/^    uint r8;$/;"	m	struct:frame
+r9	kernel.h	/^    uint r9;$/;"	m	struct:frame
+return_to_redboot	arm_lib.asm	/^return_to_redboot:$/;"	l
+running_task	task.c	/^int running_task;$/;"	v
+scream	syscall.c	/^void scream(uint sp)$/;"	f
+scream	syscall.s	/^scream:$/;"	l
+set_running_task	task.c	/^void set_running_task(int id) {$/;"	f
+set_running_task	task.s	/^set_running_task:$/;"	l
+set_task_exit_code	task.c	/^void set_task_exit_code(int id, int code) {$/;"	f
+set_task_exit_code	task.s	/^set_task_exit_code:$/;"	l
+set_task_next_id	task.c	/^void set_task_next_id(int id, int next_id) {$/;"	f
+set_task_next_id	task.s	/^set_task_next_id:$/;"	l
+set_task_stack_pointer	task.c	/^void set_task_stack_pointer(int id, unsigned int *sp) {$/;"	f
+set_task_stack_pointer	task.s	/^set_task_stack_pointer:$/;"	l
+set_task_state	task.c	/^void set_task_state(int id, int state) {$/;"	f
+set_task_state	task.s	/^set_task_state:$/;"	l
+stack_base	task.h	/^    unsigned int *stack_base;$/;"	m	struct:task
+stack_pointer	task.h	/^    unsigned int *stack_pointer;$/;"	m	struct:task
+state	task.h	/^    int state;$/;"	m	struct:task
+syscall	arm_lib.asm	/^syscall:$/;"	l
+t_id	task.h	/^    int t_id;$/;"	m	struct:task
+tail	pqueue.h	/^    pqueue_node* tail;$/;"	m	struct:pqueue_queue
+task	task.h	/^struct task {$/;"	s
+task	task.h	/^typedef struct task task;$/;"	t	typeref:struct:task
+task_list	task.c	/^task task_list[MAX_TASKS_ALLOWED];$/;"	v
+task_schedule	pqueue.c	/^pqueue task_schedule;$/;"	v
+test_task	main.c	/^void test_task(void)$/;"	f
+test_task	main.s	/^test_task:$/;"	l
+uint	constants.h	/^typedef unsigned int uint;$/;"	t
+unhandled_exception_handler	arm_lib.asm	/^unhandled_exception_handler:$/;"	l
+unset_task_next_id	task.c	/^void unset_task_next_id(int id) {$/;"	f
+unset_task_next_id	task.s	/^unset_task_next_id:$/;"	l
+user_mode	kernel.c	/^int user_mode() {$/;"	f
+user_mode	kernel.s	/^user_mode:$/;"	l

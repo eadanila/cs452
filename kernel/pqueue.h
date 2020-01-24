@@ -3,20 +3,20 @@
 
 #include "constants.h"
 
-typedef struct pqueue PQUEUE;
-typedef struct pqueue_node PQUEUE_NODE;
-typedef struct pqueue_queue PQUEUE_QUEUE;
+typedef struct pqueue pqueue;
+typedef struct pqueue_node pqueue_node;
+typedef struct pqueue_queue pqueue_queue;
 
 struct pqueue_node
 {
     uint id;
-    PQUEUE_NODE *next;
+    pqueue_node *next;
 };
 
 struct pqueue_queue
 {
-    PQUEUE_NODE* head;
-    PQUEUE_NODE* tail;
+    pqueue_node* head;
+    pqueue_node* tail;
 };
 
 struct pqueue
@@ -25,9 +25,9 @@ struct pqueue
     struct pqueue_node data[MAX_TASKS_ALLOWED];
     // Next free pqueue_node, if its 0 then all nodes 
     // have been allocated and we are out of tasks
-    PQUEUE_NODE *free;
+    pqueue_node *free;
     // Each prioirty level queue
-    PQUEUE_QUEUE queues[PRIORITY_COUNT];
+    pqueue_queue queues[PRIORITY_COUNT];
 };
 
 

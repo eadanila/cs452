@@ -20,8 +20,8 @@ int __get_next_available_id() {
         if (task_list[i].state == TASK_INVALID)
             return task_list[i].t_id;
     }
-    // TODO: set a global KNAME
-    WARN("%s has run out of valid task IDs", /* KNAME */ "Darth Plagueis");
+
+    WARN("%s has run out of valid task IDs", KNAME);
     return TASK_INVALID;
 }
 

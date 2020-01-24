@@ -9,14 +9,14 @@
 
 void print_regs(struct frame *fp) {
 
-    bwprintf(COM2, "fp: %x\r\n", fp);
+    print("fp: %x\r\n", fp);
 
-    bwprintf(COM2, "cspr: %x\r\n", fp->cspr);
-    bwprintf(COM2, "registers...\r\n");
+    print("cspr: %x\r\n", fp->cspr);
+    print("registers...\r\n");
     uint *p = (uint *)(&(fp->cspr) + 1);
     for (int i = 0; i < 16; i++) {
-        bwprintf(COM2, "%d: ", i);
-        bwprintf(COM2, "r%d: %x\r\n", i, *(p+i));
+        print("%d: ", i);
+        print("r%d: %x\r\n", i, *(p+i));
     }
 }
 
@@ -64,5 +64,6 @@ void exit_handler() {
 
 void scream(uint sp)
 {
-    bwprintf(COM2, "scream: %x\r\n", sp);
+    print("scream: %x\r\n", sp);
 }
+

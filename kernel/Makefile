@@ -16,78 +16,69 @@ LD = $(XBINDIR)/arm-none-eabi-ld
 # -Wall: report all warnings
 # -mcpu=arm920t: generate code for the 920t architecture
 # -msoft-float: no FP co-processor
-CFLAGS = -g -S -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../include
+CFLAGS = -O3 -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../include
 # ASFLAGS = -g -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I../include
 
 # -static: force static linking
 # -e: set entry point
 # -nmagic: no page alignment
 # -T: use linker script
-LDFLAGS = -static -e main -nmagic -T linker.ld -L ../lib -L $(XLIBDIR2)
+LDFLAGS = -static -e main -nmagic -T $(SRCDIR)/linker.ld -L ../lib -L $(XLIBDIR2)
+LIBFLAGS = -lbwio -lgcc
 
-all: kernel.elf
+SRCDIR = .
+BUILDDIR = ../build
+
+C_SOURCES = $(wildcard $(SRCDIR)/*.c)
+C_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(C_SOURCES))
+
+ASM_SOURCES = $(wildcard $(SRCDIR)/*.asm)
+ASM_OBJECTS = $(patsubst $(SRCDIR)/%.asm,$(BUILDDIR)/%.o,$(ASM_SOURCES))
+
+SOURCES = $(C_SOURCES) $(ASM_SOURCES)
+OBJECTS = $(C_OBJECTS) $(ASM_OBJECTS)
+
+BINARY = kernel.elf
+
+happy: clean all
+
+all: $(BUILDDIR) $(OBJECTS) $(BINARY)
+
+$(BUILDDIR):
+	-mkdir -p $@
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.asm
+	$(AS) $(ASFLAGS) -o $@ $^
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(BINARY): $(OBJECTS)
+	$(LD) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBFLAGS)
+	-cp $(BUILDDIR)/$@ ./$@
 
 fatal: CFLAGS += -DVERBOSITY=1
-fatal: kernel.elf
+fatal: $(BINARY)
 
 error: CFLAGS += -DVERBOSITY=2
-error: kernel.elf
+error: $(BINARY)
 
 warn: CFLAGS += -DVERBOSITY=3
-warn: kernel.elf
+warn: $(BINARY)
 
 log: CLAGS += -DVERBOSITY=4
-log: kernel.elf
+log: $(BINARY)
 
 debug: CFLAGS += -DVERBOSITY=5
-debug: kernel.elf
-
-arm_lib.o: arm_lib.asm
-	$(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
-
-main.s: main.c
-	$(CC) -S $(CFLAGS) main.c
-
-main.o: main.s
-	$(AS) $(ASFLAGS) -o main.o main.s
-
-syscall.s: syscall.c
-	$(CC) -S $(CFLAGS) syscall.c
-
-syscall.o: syscall.s
-	$(AS) $(ASFLAGS) -o syscall.o syscall.s
-
-kernel.s: kernel.c
-	$(CC) -S $(CFLAGS) kernel.c
-
-kernel.o: kernel.s
-	$(AS) $(ASFLAGS) -o kernel.o kernel.s
-
-pqueue.s: pqueue.c
-	$(CC) -S $(CFLAGS) pqueue.c
-
-pqueue.o: pqueue.s
-	$(AS) $(ASFLAGS) -o pqueue.o pqueue.s
-
-task.s: task.c
-	$(CC) -S $(CFLAGS) task.c
-
-task.o: task.s
-	$(AS) $(ASFLAGS) -o task.o task.s
-
-# arm_lib.o: arm_lib.s
-#
-# 	$(AS) $(ASFLAGS) -o test.o arm_lib.s
-
-kernel.elf: main.o arm_lib.o syscall.o kernel.o pqueue.o task.o
-	$(LD) $(LDFLAGS) -o $@ main.o arm_lib.o syscall.o kernel.o pqueue.o task.o -lbwio -lgcc
+debug: $(BINARY)
 
 install:
-	-touch $(DESTDIR)/kernel
-	-rm $(DESTDIR)/kernel
-	-cp kernel.elf $(DESTDIR)/kernel
-	-chmod o=r $(DESTDIR)/kernel
+	@echo Installing for `whoami`.
+	-touch /u/cs452/tftp/ARM/`whoami`/kernel
+	-rm /u/cs452/tftp/ARM/`whoami`/kernel
+	-cp $(BUILDDIR)/$(BINARY) /u/cs452/tftp/ARM/`whoami`/kernel
+	-chmod o=r /u/cs452/tftp/ARM/`whoami`/kernel
 
 clean:
-	-rm -f kernel.elf *.s *.o
+	-rm -f ./$(BINARY) $(BUILDDIR)/$(BINARY) $(BUILDDIR)/*.s $(BUILDDIR)/*.o
 
