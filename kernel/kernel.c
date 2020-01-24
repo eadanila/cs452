@@ -69,6 +69,7 @@ void panic() {
     print("sleep.\r\n\r\n");
 
     print("Ironic. He could save others from death, but not himself.\r\n");
+    print("\r\nPS: This is a panic.\r\n");
 
     // unregister handlers and exit to redboot
     uint *p = (uint *)0x20;
