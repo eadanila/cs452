@@ -6,8 +6,9 @@
 #include "pqueue.h"
 #include "logging.h"
 #include "task.h"
+#include "frame.h"
 
-void print_regs(struct frame *fp) {
+void print_regs(Frame *fp) {
 
     print("fp: %x\r\n", fp);
 
@@ -26,8 +27,8 @@ void print_regs(struct frame *fp) {
 void handle_swi(int id)
 {
     DEBUG("handle_swi called");
-    task t = get_task_by_id(id);
-    struct frame *fp = (struct frame *)t.stack_pointer;
+    Task t = get_task_by_id(id);
+    Frame *fp = (struct frame *)t.stack_pointer;
 
     int syscall_id = fp->r0;
 
@@ -63,7 +64,7 @@ void handle_swi(int id)
 
             break;
         case SYSCALL_YIELD:
-            // All this should do is send the task to the end of the ready queue
+            // All this should do is send the Task to the end of the ready queue
             DEBUG("YIELD, called by %d", id);
 
             set_task_state(id, TASK_READY);
@@ -95,11 +96,11 @@ int kcreate(int priority, uint function) {
 
     if(t_id == OUT_OF_TASK_DESCRIPTORS)
     {
-        WARN("Maximum number of tasks reached!");
+        WARN("Maximum number of Tasks reached!");
         return OUT_OF_TASK_DESCRIPTORS;
     }
 
-    task t = get_task_by_id(t_id);
+    Task t = get_task_by_id(t_id);
     struct frame *f = (struct frame *)(t.stack_base - 16);
 
     f->r13 = (uint)t.stack_base;

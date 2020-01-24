@@ -118,17 +118,9 @@
         } \
     }
 #else
-    #define FATAL(msg, ...) { \
-        if (!user_mode()) panic(); \
-        Exit(); \
-    }
+    #define FATAL(msg, ...) { }
 
-    #define assert(cond, ...) { \
-        if (!(cond)) { \
-            if (!user_mode()) panic(); \
-            Exit(); \
-        } \
-    }
+    #define assert(cond, ...) { } 
 #endif
 
 

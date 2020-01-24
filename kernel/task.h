@@ -7,6 +7,9 @@
 #define TASK_RUNNING 1
 #define TASK_ZOMBIE 7
 
+#define PARENT_DEAD -10
+#define PARENT_ZOMBIE -11
+
 #include "constants.h"
 
 // t_id, p_id, priority, stack_base, and pc should be set when a
@@ -22,7 +25,7 @@ struct task {
     unsigned int *stack_pointer;
     unsigned int *stack_base;
 };
-typedef struct task task;
+typedef struct task Task;
 
 // Require: id is a valid task
 //  Return: task state in set of valid states
@@ -39,19 +42,6 @@ int get_task_exit_code(int id);
 void set_task_exit_code(int id, int code);
 
 // Require: id is a valid task
-//  Return: valid ID of next task, or 
-//          TASK_INVALID if no following task
-int get_task_next_id(int id);
-
-// Require: id and next_id are valid tasks and not the same
-void set_task_next_id(int id, int next_id);
-
-// Require: id is a valid id
-// Sets the task's next_id to TASK_INVALID.
-// Generally used for moving the task to the end of the queue.
-void unset_task_next_id(int id);
-
-// Require: id is a valid task
 //  Return: task's stack_pointer for that id, where 
 //  stack_base - MAX_STACK_SIZE < stack_pointer <= stack_base
 unsigned int *get_task_stack_pointer(int id);
@@ -63,7 +53,6 @@ void set_task_stack_pointer(int id, unsigned int *sp);
 // Initializes the task_list by setting relevant fields for all items
 // Sets t_id to array index
 // Sets p_id to TASK_INVALID
-// Sets next_id to TASK_INVALID
 void init_task_list(void);
 
 // Require: id is a valid task
@@ -77,7 +66,7 @@ int get_running_task(void);
 
 // Require: id is a valid task
 //  Return: the task structure for that id
-task get_task_by_id(int id);
+Task get_task_by_id(int id);
 
 // Require: p_id is a valid task, pri is in [0, MIN_PRIORITY)
 //  Return: ID of newly allocated task having TASK_READY state, or 
