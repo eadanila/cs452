@@ -7,33 +7,12 @@
 
 #include "logging.h"
 
-void test_task(void)
-{
-    print("Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
-    Yield();
-    print("Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
-    Exit();
-}
-
-void first_task(void)
-{
-    // 3 is lower priority than 1
-    DEBUG("");
-    Create(3, test_task);
-    Create(3, test_task);
-
-    Create(1, test_task);
-    Create(1, test_task);
-
-    print("FirstUserTask: exiting\r\n");
-
-    Exit();
-}
+#include "user.h"
 
 int main(int argc, char *argv[]) {
     kinit();
-    DEBUG("Creating first task -> %x", first_task);
-    int id = kcreate(2, (uint)first_task);
+    DEBUG("Creating first task -> %x", umain);
+    int id = kcreate(2, (uint)umain);
 
     int sid = pop_task();
     if (id != sid)
