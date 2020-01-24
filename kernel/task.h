@@ -16,13 +16,11 @@
 struct task {
     int t_id;
     int p_id;
-    int next_id;
     int priority;
     int state;
     int exit_code;
     unsigned int *stack_pointer;
     unsigned int *stack_base;
-    void (*pc)(void);
 };
 typedef struct task task;
 
@@ -88,7 +86,7 @@ task get_task_by_id(int id);
 // from parameters, and state to TASK_READY. Also selects a stack
 // base address, initializes the stack, and sets the stack pointer
 // accordingly.
-int allocate_task(int p_id, int pri, void (*pc)(void));
+int allocate_task(int p_id, int pri);
 
 // Require: id is a valid task
 // Frees a task by setting its state to TASK_INVALID so that
@@ -98,12 +96,6 @@ void free_task(int id);
 //  Return: 0 if id is not in [0, MAX_ALLOWED_TASKS) or if
 //          id describes a task with TASK_INVALID state
 int is_valid_task(int id);
-
-//  Return: the t_id of the currently running task
-int MyTid(void);
-
-//  Return: the p_id of the currently running task
-int MyParentTid(void);
 
 #endif
 

@@ -30,22 +30,22 @@ enter_kernel:
     @ save the original r0 to kstack as we need r0 to store user stack ptr
     push {r0}
 
-    @ copy the user stack ptr onto our stack
-    stmdb sp, {r13}^
-    sub sp, sp, #4
+//    @ copy the user stack ptr onto our stack
+//    stmdb sp, {r13}^
+//    sub sp, sp, #4
+//
+//    @ copy the top of our stack (which has the user's sp) into r0
+//    ldmia sp!, {r0}
 
-//    @ switch to system processor mode
-//    msr cpsr, #0b11111 
-//
-//    @ put r13 (user's sp) into r0 (shared btween svc and sys modes)
-//    mov r0, r13
-//
-//    @ switch back into supervisor processor mode
-//    msr cpsr, #0b10011
+    @ switch to system processor mode
+    msr cpsr, #0b11111 
+
+    @ put r13 (user's sp) into r0 (shared btween svc and sys modes)
+    mov r0, r13
+
+    @ switch back into supervisor processor mode
+    msr cpsr, #0b10011
     
-    @ copy the top of our stack (which has the user's sp) into r0
-    ldmia sp!, {r0}
-
     @ Copy return address (lr or pc of user) onto user stack
     sub r0, r0, #4
     str lr, [r0]
