@@ -26,13 +26,6 @@ struct __attribute__((__packed__)) frame {
 };
 typedef struct frame FRAME;
 
-int task_count;
-int next_task;
-//task tasks[MAX_TASKS_ALLOWED];
-PQUEUE task_schedule;
-
-int id;
-
 int Create(int priority, void (*function)());
 
 void kinit(void);
@@ -41,3 +34,4 @@ int user_mode(void);
 void panic(void);
 
 #endif
+

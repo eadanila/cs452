@@ -11,8 +11,6 @@ if [ ! -d /u/cs452/tftp/ARM/$u/ ]; then
     exit 1
 fi
 
-export DESTDIR=/u/cs452/tftp/ARM/$u
-
 make clean
 make debug
 make install

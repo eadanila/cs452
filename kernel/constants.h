@@ -1,5 +1,7 @@
 #ifndef CONSTANTS_H
-#define CONSTANTSL_H
+#define CONSTANTS_H
+
+#define KNAME "PlagueOS" // from Darth Plagueis
 
 typedef unsigned int uint;
 
@@ -14,9 +16,13 @@ typedef unsigned int uint;
 
 #define CSPR_USER_MODE 0x10
 
+#define IVT_BASE_ADDR 0x20;
+#define IVT_SWI_ADDR 0x28;
+
 // Error codes
 #define OUT_OF_TASK_DESCRIPTORS -2
 #define INVALID_PRIORITY -1
 
 
 #endif
+

@@ -2,8 +2,10 @@
 .global enter_kernel
 .global enter_user
 .global syscall
-.global init_task
 .global unhandled_exception_handler
+
+.global get_cpsr
+.global return_to_redboot
 
 arg_return_test:
     @mov r0, #23
@@ -29,7 +31,8 @@ enter_kernel:
     push {r0}
 
     @ copy the user stack ptr onto our stack
-    stmdb sp!, {r13}^
+    stmdb sp, {r13}^
+    sub sp, sp, #4
 
 //    @ switch to system processor mode
 //    msr cpsr, #0b11111 
@@ -85,23 +88,27 @@ enter_user:
     msr cpsr_all, r1
     ldmia r0, {r0-r15}
 
-@ Could have this instead of intializing a placeholder set of registers on stack.
-@enter_user_first_time:
-
-@ This will need to initialize a stack frame such that it accepts an enter user call onto it
-@ extern int init_task(void stack_ptr, void (*f)(void));
-init_task:
-    str r2, [r0, #-8]
-@    str r13, [r0, #-4]
-    str r1, [r0]
-    sub r0, r0, #0
-    mov pc, lr
 
 unhandled_exception_handler:
     mov r0, lr
     b print_lr
+    b panic
 
 
+get_cpsr:
+    mrs r0, cpsr
+    bx lr
+
+
+return_to_redboot:
+@ The redboot return address is 0x174C8, but due to restrictions on
+@ mov this cannot be loaded directly. Instead we load 0x174 into r0
+@ and shift it twice by multiplying with 0x100 into lr, then add 0xC8
+    mov r0, #0x174
+    mov r1, #0x100
+    mul lr, r0, r1
+    add lr, #0xc8
+    bx lr
 
 
 
@@ -143,3 +150,4 @@ unhandled_exception_handler:
 @str r12, [sp, #48]
 @str r13, [sp, #52]
 @str r14, [sp, #56]
+

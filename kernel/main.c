@@ -9,9 +9,9 @@
 
 void test_task(void)
 {
-    bwprintf(COM2, "Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
+    print("Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
     Yield();
-    bwprintf(COM2, "Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
+    print("Task ID: %d, Parent ID: %d\r\n", MyTid(), MyParentTid());
 }
 
 void first_task(void)
@@ -24,12 +24,12 @@ void first_task(void)
     Create(1, test_task);
     Create(1, test_task);
 
-    bwprintf(COM2, "FirstUserTask: exiting\r\n");
+    print("FirstUserTask: exiting\r\n");
 }
 
 int main(int argc, char *argv[]) {
     kinit();
-    id = Create(2, first_task);
+    int id = Create(2, first_task);
 
     int sid = pop_task();
     if (id != sid)
@@ -47,7 +47,8 @@ int main(int argc, char *argv[]) {
         if (id < 1)
             break;
     }
-    bwprintf(COM2, "Kernel: exiting");
+
+    print("Kernel: exiting\r\n");
     return 0;
 }
 
