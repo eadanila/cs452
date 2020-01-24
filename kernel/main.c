@@ -32,7 +32,8 @@ void first_task(void)
 
 int main(int argc, char *argv[]) {
     kinit();
-    int id = Create(2, first_task);
+    DEBUG("Creating first task -> %x", first_task);
+    int id = kcreate(2, (uint)first_task);
 
     int sid = pop_task();
     if (id != sid)
@@ -40,14 +41,14 @@ int main(int argc, char *argv[]) {
     set_running_task(id);
 
     for (;;) {
-        DEBUG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
+        LOG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
         handle_swi(id);
 
         id = pop_task();
         set_running_task(id);
 
-        if (id < 1)
+        if (id < 0)
             break;
     }
 

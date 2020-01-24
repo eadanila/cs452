@@ -62,29 +62,6 @@ void set_task_exit_code(int id, int code) {
     task_list[id].exit_code = code;
 }
 
-int get_task_next_id(int id) {
-    assert(is_valid_task(id));
-
-    int next = task_list[id].next_id;
-    assert(is_valid_task(next) || next == TASK_INVALID);
-
-    return next;
-}
-
-void set_task_next_id(int id, int next_id) {
-    assert(is_valid_task(id));
-    assert(is_valid_task(next_id));
-    assert(id != next_id);
-
-    task_list[id].next_id = next_id;
-}    
-
-void unset_task_next_id(int id) {
-    assert(is_valid_task(id));
-
-    task_list[id].next_id = TASK_INVALID;
-}
-
 unsigned int *get_task_stack_pointer(int id) {
     assert(is_valid_task(id));
 
@@ -104,7 +81,6 @@ void init_task_list(void) {
     for (int i = 0; i < MAX_TASKS_ALLOWED; i++) {
         task_list[i].t_id = i;
         task_list[i].p_id = TASK_INVALID;
-        task_list[i].next_id = TASK_INVALID;
         task_list[i].state = TASK_INVALID;
     }
 }
@@ -128,7 +104,7 @@ task get_task_by_id(int id) {
     return task_list[id];
 }
 
-int allocate_task(int p_id, int pri, void (*pc)(void)) {
+int allocate_task(int p_id, int pri) {
     assert(is_valid_task(p_id) || p_id == -1);
     assert(pri >= 0 && pri < MIN_PRIORITY);
 
@@ -138,7 +114,6 @@ int allocate_task(int p_id, int pri, void (*pc)(void)) {
 
     task_list[id].p_id = p_id;
     task_list[id].priority = pri;
-    task_list[id].pc = pc;
     task_list[id].stack_base = (unsigned int *)(MEMORY_START + id*TASK_MEMORY_SIZE);
     task_list[id].state = TASK_READY;
 
@@ -153,18 +128,5 @@ void free_task(int id) {
 
 int is_valid_task(int id) {
     return (id < MAX_TASKS_ALLOWED) && task_list[id].state != TASK_INVALID;
-}
-    
-
-int MyTid(void) {
-    assert(is_valid_task(running_task));
-
-    return task_list[running_task].t_id;
-}
-
-int MyParentTid(void) {
-    assert(is_valid_task(running_task));
-
-    return task_list[running_task].p_id;
 }
 

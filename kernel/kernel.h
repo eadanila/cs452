@@ -24,9 +24,7 @@ struct __attribute__((__packed__)) frame {
     uint r14;
     uint r15;
 };
-typedef struct frame FRAME;
-
-int Create(int priority, void (*function)());
+typedef struct frame Frame;
 
 void kinit(void);
 

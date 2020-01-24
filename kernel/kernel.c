@@ -11,37 +11,7 @@
 void unhandled_exception_handler(void);
 
 void print_lr(uint u) {
-    FATAL("We tried to access something we shouldn't here: %x\r\n", u);
-}
-
-int Create(int priority, void (*function)())
-{
-    if(priority < 0 || priority > MIN_PRIORITY) return INVALID_PRIORITY;
-
-    int p_id = get_running_task();
-    int id = allocate_task(p_id, priority, function);
-    
-    if(id == OUT_OF_TASK_DESCRIPTORS) 
-    {
-        WARN("Maximum number of tasks reached!");
-        return id;
-    }
-
-    task t = get_task_by_id(id);
-    struct frame *f = (struct frame *)(t.stack_base - 16);
-
-    f->r13 = (uint)t.stack_base;
-    f->r15 = (uint)function;
-    f->r14 = (uint)exit_handler;
-    f->cspr = (uint)CSPR_USER_MODE;
-
-    set_task_stack_pointer(id, (uint *)t.stack_base - 16);
-
-    push_task(id);
-
-    print("Created: %d\r\n", id);
-
-    return id;
+    FATAL("We tried to access something we shouldn't here: %x", u);
 }
 
 int user_mode() {

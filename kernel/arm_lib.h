@@ -5,7 +5,7 @@
 
 extern uint *enter_kernel();
 extern uint *enter_user(uint *task_stack);
-extern int syscall(int syscall_id);
+extern int syscall(int syscall_id, int arg1, int arg2);
 
 extern uint get_cpsr(void);
 extern void return_to_redboot(void);
