@@ -3,9 +3,8 @@ The executable file is found in the student environment under:
 
 To build, use the following commands at the root of the repository on a student environmnet computer:
 	make 
-	make install
 
-To run, use the following command in redboot: 
+To run the precompiled kernel, use the following command in redboot: 
 	load ARM/vscurtu/k1/kernel; go
 
 Group members:
