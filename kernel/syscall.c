@@ -112,8 +112,6 @@ int kcreate(int priority, uint function) {
 
     push_task(t_id);
 
-    print("Created: %d\r\n", t_id);
-
     return t_id;
 }
 

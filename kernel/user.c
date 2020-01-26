@@ -12,13 +12,19 @@ void test_task(void)
 
 void umain(void)
 {
+    int id = 0;
     // 3 is lower priority than 1
-    DEBUG("");
-    Create(3, test_task);
-    Create(3, test_task);
+    id = Create(3, test_task);
+    print("Created: %d\r\n", id)
 
-    Create(1, test_task);
-    Create(1, test_task);
+    id = Create(3, test_task);
+    print("Created: %d\r\n", id);
+
+    id = Create(1, test_task);
+    print("Created: %d\r\n", id);
+
+    id = Create(1, test_task);
+    print("Created: %d\r\n", id);
 
     print("FirstUserTask: exiting\r\n");
 
