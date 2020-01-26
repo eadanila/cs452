@@ -4,6 +4,7 @@
 #include "arm_lib.h"
 #include "syscall.h"
 #include "pqueue.h"
+#include "message_queue.h"
 
 #include "logging.h"
 #include "task.h"
@@ -59,8 +60,8 @@ void kinit() {
     print("\r\n");
 
     init_task_list();
-
     init_pqueue();
+    init_message_queue();
     
     uint *p = (uint *) IVT_BASE_ADDR;
     for (int i = 0; i < 8; i++) {
