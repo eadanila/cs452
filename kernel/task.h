@@ -5,6 +5,11 @@
 #define TASK_INVALID -100
 #define TASK_READY 0
 #define TASK_RUNNING 1
+
+#define TASK_SEND_WAIT 2
+#define TASK_RECV_WAIT 3
+#define TASK_RPLY_WAIT 4
+
 #define TASK_ZOMBIE 7
 
 #define PARENT_DEAD -10

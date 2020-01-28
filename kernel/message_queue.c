@@ -28,7 +28,7 @@ void push_message(int id, int m_id)
     IDNode *new_node = m.free;
     m.free = m.free->next;
     
-    new_node->id = id;
+    new_node->id = m_id;
     new_node->next = 0;
     if(tail == 0)
         // Empty queue

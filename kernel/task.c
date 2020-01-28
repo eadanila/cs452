@@ -5,12 +5,7 @@ int running_task;
 Task task_list[MAX_TASKS_ALLOWED];
 
 int __is_defined_task_state(int state) {
-    int valid = (state == TASK_INVALID);
-    valid = valid || (state == TASK_READY);
-    valid = valid || (state == TASK_RUNNING);
-    valid = valid || (state == TASK_ZOMBIE);
-
-    return valid;
+    return (state == -100) || (state >= 0 && state <= 4) || (state == 7);
 }
 
 // Seeks through task_list for the next available ID
@@ -26,6 +21,7 @@ int __get_next_available_id() {
 }
 
 int get_task_state(int id) {
+    DEBUG("get_task_state(%d)", id);
     assert(is_valid_task(id));
     assert(__is_defined_task_state(task_list[id].state));
 
