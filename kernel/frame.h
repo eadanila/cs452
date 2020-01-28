@@ -19,6 +19,8 @@ struct __attribute__((__packed__)) frame {
     uint r13;
     uint r14;
     uint r15;
+    uint stk0;
+    uint stk1;
 };
 typedef struct frame Frame;
 
