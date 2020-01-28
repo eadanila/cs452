@@ -2,6 +2,8 @@
 #include "syscall.h"
 #include "logging.h"
 
+#include "timer.h"
+
 void recv_task(void)
 {
     char buf[100];
@@ -29,7 +31,13 @@ void send_task(void)
             buf[i] = 'b';
     }
 
+    int high, low;
+    start_debug_timer();
+    stop_debug_timer();
+    start_debug_timer();
     int len = Send(1, buf, bufsz, rpbuf, rpbuflen);
+    read_debug_timer(&high, &low);
+    print("TIME: %d ticks\r\n", low);
 
     print("Got reply of size %d from somebody\r\n", len);
     print("Message was: %s\r\n", rpbuf);
