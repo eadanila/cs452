@@ -160,6 +160,8 @@ void kinit() {
     uint *handler_dest = (uint *) IVT_SWI_ADDR;
     *handler_dest = (uint)enter_kernel;
 
+    enable_cache();
+
     DEBUG("kint() finished");
 }
 

@@ -4,6 +4,8 @@
 .global syscall
 .global unhandled_exception_handler
 
+.global enable_cache
+
 .global get_cpsr
 .global return_to_redboot
 
@@ -87,6 +89,25 @@ enter_user:
     @ switch to user mode and load in user registers!
     msr cpsr_all, r1
     ldmia r0, {r0-r15}
+
+
+enable_cache:
+    // get cp15,r1 into r0
+    // cp15: system control coprocessor
+    //   r1: control register
+    mrc p15, 0, r0, c1, c0, 0
+    // enable bits
+    //  26 -> L2 cache
+    //  12 -> ICache
+    //   2 -> DCache
+    //   0 -> MMU
+    orr r0, #(1 << 26) 
+    orr r0, #(1 << 12)
+    orr r0, #(1 << 2)
+    orr r0, #1
+    // copy r0 into cp15,r1
+    mcr p15, 0, r0, c1, c0, 0
+    bx lr
 
 
 unhandled_exception_handler:
