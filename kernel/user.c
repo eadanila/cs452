@@ -4,6 +4,8 @@
 
 #include "timer.h"
 
+#include "name_server.h"
+
 void recv_task(void)
 {
     char buf[100];
@@ -43,19 +45,58 @@ void send_task(void)
     print("Message was: %s\r\n", rpbuf);
 }
 
+void name_test_1()
+{
+    RegisterAs("AAA");
+    print("test_1 is %d \n\r", MyTid());
+}
+
+void name_test_2()
+{
+    RegisterAs("BBB");
+    print("test_2 is %d \n\r", MyTid());
+}
+
+void name_test_3()
+{
+    RegisterAs("BBB");
+    print("test_3 is %d \n\r", MyTid());
+}
+
+void name_test()
+{
+    Create(0, name_test_1);
+    Create(0, name_test_2);
+
+    print("who is AAA?: %d\n\r", WhoIs("AAA"));
+    print("who is BBB?: %d\n\r", WhoIs("BBB"));
+    print("who is CCC?: %d\n\r", WhoIs("CCC"));
+
+    Create(0, name_test_3);
+
+    print("who is AAA?: %d\n\r", WhoIs("AAA"));
+    print("who is BBB?: %d\n\r", WhoIs("BBB"));
+    print("who is CCC?: %d\n\r", WhoIs("CCC"));
+}
+
 void umain(void)
 {
-    int id = 0;
-    // 3 is lower priority than 1
-    id = Create(3, recv_task);
-    print("Created: %d\r\n", id)
+    // TODO Perhaps move to kernel and #define the id
+    name_server_id = Create(0, name_server);
 
-    id = Create(3, send_task);
-    print("Created: %d\r\n", id);
+    Create(0, name_test);
 
-//    Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
+//     int id = 0;
+//     // 3 is lower priority than 1
+//     id = Create(3, recv_task);
+//     print("Created: %d\r\n", id)
 
-    print("FirstUserTask: exiting\r\n");
+//     id = Create(3, send_task);
+//     print("Created: %d\r\n", id);
 
-    Exit();
+// //    Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
+
+//     print("FirstUserTask: exiting\r\n");
+
+//     Exit();
 }
