@@ -7,7 +7,6 @@
 #include "string_utility.h"
 // #include "string.h" // Doesn't work, get that str functions are undefined
 
-#define MAX_NAME_LENGTH 128 // 16 KiB total for all 128 names, includes null terminator 
 // Prefixes for messages sent to name server to define the operation done on the name
 #define REGISTERAS_MESSAGE_PREFIX 1
 #define WHOIS_MESSAGE_PREFIX 2
