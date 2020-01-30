@@ -10,19 +10,21 @@
 #include "task.h"
 #include "frame.h"
 
+#include "timer.h"
+
 void unhandled_exception_handler(void);
 
 void print_lr(uint u) {
     FATAL("We tried to access something we shouldn't here: %x", u);
 }
 
-int user_mode() {
+int user_mode(void) {
     uint proc_state = get_cpsr();
     uint mode = (uint)proc_state & (uint)0x1F;
     return mode == CSPR_USER_MODE;
 }
 
-void panic() {
+void panic(void) {
     // something bad has happened and now the kernel is in a panic
     // print panic message and return to redboot
     print("\r\n");
@@ -141,7 +143,7 @@ void kcopyreply(int dest_id, int src_id) {
     push_task(dest_id);
 }
 
-void kinit() {
+void kinit(void) {
     // Initialize COM2
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);

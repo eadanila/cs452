@@ -6,97 +6,112 @@
 
 #include "name_server.h"
 
-void recv_task(void)
-{
-    char buf[100];
-    int bufsz = 100;
-    int tid;
+int recv_tid; int tid;
+int send_size;
 
-    int len = Receive(&tid, buf, bufsz);
-
-    print("Got message of size %d from %d\r\n", len, tid);
-    print("Message was: %s\r\n", buf);
-
-    Reply(2, "thanks!", 8);
+void test_recv4(void) {
+    char recv_buf[4];
+    char reply_buf[4];
+    for (;;) {
+        Receive(&tid, recv_buf, 4);
+        Reply(tid, reply_buf, 4);
+    }
 }
 
-void send_task(void)
-{
-    char buf[128];
-    int bufsz = 128;
-    char rpbuf[64];
-    int rpbuflen = 64;
-
-    for (int i = 0; i < bufsz; i++) {
-        buf[i] = 'a';
-        if (i == 55)
-            buf[i] = 'b';
+void test_recv64(void) {
+    char recv_buf[64];
+    char reply_buf[64];
+    for (;;) {
+        Receive(&tid, recv_buf, 64);
+        Reply(tid, reply_buf, 64);
     }
+}
 
-    int high, low;
-    start_debug_timer();
+void test_recv256(void) {
+    char recv_buf[256];
+    char reply_buf[256];
+    for (;;) {
+        Receive(&tid, recv_buf, 256);
+        Reply(tid, reply_buf, 256);
+    }
+}
+
+void umain(void) {
+    char send_buf[256];
+    char reply_buf[256];
+    int ticks = 0;
+    int recv_pri = 5;
+
+    print("Sender priority\r\n");
+
+    recv_tid = Create(recv_pri, test_recv4);
+    ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    int len = Send(1, buf, bufsz, rpbuf, rpbuflen);
-    read_debug_timer(&high, &low);
-    print("TIME: %d ticks\r\n", low);
+    for (int j = 0; j < 10000; j++) {
+        Send(recv_tid, send_buf, 4, reply_buf, 4);
+    }
+    ticks = read_debug_timer();
+    print("%d tests (size %d), %d ticks\r\n", 10000, 4, ticks);
 
-    print("Got reply of size %d from somebody\r\n", len);
-    print("Message was: %s\r\n", rpbuf);
+
+    recv_tid = Create(recv_pri, test_recv64);
+    ticks = 0;
+    stop_debug_timer();
+    start_debug_timer();
+    for (int j = 0; j < 10000; j++) {
+        Send(recv_tid, send_buf, 64, reply_buf, 64);
+    }
+    ticks = read_debug_timer();
+    print("%d tests (size %d), %d ticks\r\n", 10000, 64, ticks);
+
+
+    recv_tid = Create(recv_pri, test_recv256);
+    ticks = 0;
+    stop_debug_timer();
+    start_debug_timer();
+    for (int j = 0; j < 10000; j++) {
+        Send(recv_tid, send_buf, 256, reply_buf, 256);
+    }
+    ticks = read_debug_timer();
+    print("%d tests (size %d), %d ticks\r\n", 10000, 256, ticks);
+
+
+    recv_pri = 0;
+    print("Receiver priority\r\n")
+
+    recv_tid = Create(recv_pri, test_recv4);
+    ticks = 0;
+    stop_debug_timer();
+    start_debug_timer();
+    for (int j = 0; j < 10000; j++) {
+        Send(recv_tid, send_buf, 4, reply_buf, 4);
+    }
+    ticks = read_debug_timer();
+    print("%d tests (size %d), %d ticks\r\n", 10000, 4, ticks);
+
+
+    recv_tid = Create(recv_pri, test_recv64);
+    ticks = 0;
+    stop_debug_timer();
+    start_debug_timer();
+    for (int j = 0; j < 10000; j++) {
+        Send(recv_tid, send_buf, 64, reply_buf, 64);
+    }
+    ticks = read_debug_timer();
+    print("%d tests (size %d), %d ticks\r\n", 10000, 64, ticks);
+
+
+    recv_tid = Create(recv_pri, test_recv256);
+    ticks = 0;
+    stop_debug_timer();
+    start_debug_timer();
+    for (int j = 0; j < 10000; j++) {
+        Send(recv_tid, send_buf, 256, reply_buf, 256);
+    }
+    ticks = read_debug_timer();
+    print("%d tests (size %d), %d ticks\r\n", 10000, 256, ticks);
 }
 
-void name_test_1()
-{
-    RegisterAs("AAA");
-    print("test_1 is %d \n\r", MyTid());
-}
 
-void name_test_2()
-{
-    RegisterAs("BBB");
-    print("test_2 is %d \n\r", MyTid());
-}
 
-void name_test_3()
-{
-    RegisterAs("BBB");
-    print("test_3 is %d \n\r", MyTid());
-}
-
-void name_test()
-{
-    Create(0, name_test_1);
-    Create(0, name_test_2);
-
-    print("who is AAA?: %d\n\r", WhoIs("AAA"));
-    print("who is BBB?: %d\n\r", WhoIs("BBB"));
-    print("who is CCC?: %d\n\r", WhoIs("CCC"));
-
-    Create(0, name_test_3);
-
-    print("who is AAA?: %d\n\r", WhoIs("AAA"));
-    print("who is BBB?: %d\n\r", WhoIs("BBB"));
-    print("who is CCC?: %d\n\r", WhoIs("CCC"));
-}
-
-void umain(void)
-{
-    // TODO Perhaps move to kernel and #define the id
-    name_server_id = Create(0, name_server);
-
-    Create(0, name_test);
-
-//     int id = 0;
-//     // 3 is lower priority than 1
-//     id = Create(3, recv_task);
-//     print("Created: %d\r\n", id)
-
-//     id = Create(3, send_task);
-//     print("Created: %d\r\n", id);
-
-// //    Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
-
-//     print("FirstUserTask: exiting\r\n");
-
-//     Exit();
-}

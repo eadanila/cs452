@@ -140,19 +140,19 @@ int Create(int priority, void(*function)()) {
     return syscall(SYSCALL_CREATE, priority, (uint)function, 0, 0, 0);
 }
 
-int MyTid() {
+int MyTid(void) {
     return syscall(SYSCALL_MY_TID, 0, 0, 0, 0, 0);
 }
 
-int MyParentTid() {
+int MyParentTid(void) {
     return syscall(SYSCALL_PARENT_TID, 0, 0, 0, 0, 0);
 }
 
-void Yield() {
+void Yield(void) {
     syscall(SYSCALL_YIELD, 0, 0, 0, 0, 0);
 }
 
-void Exit()
+void Exit(void)
 {
     syscall(SYSCALL_EXIT, 0, 0, 0, 0, 0);
 }

@@ -21,7 +21,7 @@ int _strlen(const char* s);
 //         >0: the first character that does not match has a lower value in str2
 //         In the <0 and >0 cases, the magnitude of the return value indicates
 //         the index of the first character that does not match with base 1 index.
-int _strcmp(const char* str1,const char*str2);
+int _strcmp(const char* str1, const char*str2);
 
 
 
