@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
     DEBUG("Creating first task -> %x", umain);
 
-    int id = kcreate(2, (uint)umain);
+    int id = kcreate(3, (uint)umain);
 
     int sid = pop_task();
     if (id != sid)
