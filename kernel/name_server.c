@@ -60,8 +60,6 @@ int _who_is(char *name)
 
 int _register_as(int id, char *name)
 {
-    if(_strlen(name) > MAX_NAME_LENGTH - 1) return NAME_TOO_LONG;
-
     int existing = _who_is(name);
     // If name already exists, make that tasks name empty to guarantee
     // all names are unique
