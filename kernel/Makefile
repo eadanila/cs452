@@ -16,7 +16,7 @@ LD = $(XBINDIR)/arm-none-eabi-ld
 # -Wall: report all warnings
 # -mcpu=arm920t: generate code for the 920t architecture
 # -msoft-float: no FP co-processor
-CFLAGS = -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../include
+CFLAGS = -O3 -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../include
 # ASFLAGS = -g -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I../include
 
 # -static: force static linking
