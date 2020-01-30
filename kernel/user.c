@@ -40,12 +40,22 @@ void test_recv256(void) {
     }
 }
 
-void time_attack(void)
-{
+void send_stuff(void) {
+    char send_buf[256];
+    char reply_buf[256];
+    print("ret code %d\r\n", Send(recv_tid, send_buf, 4, reply_buf, 4));
+}
+
+void test_exit(void) {
+    Exit();
+}
+
+void time_attack(void) {
     char send_buf[256];
     char reply_buf[256];
     int ticks = 0;
     int recv_pri = 5;
+    int num = 10000;
 
     print("Sender priority\r\n");
 
@@ -53,7 +63,7 @@ void time_attack(void)
     ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    for (int j = 0; j < 10000; j++) {
+    for (int j = 0; j < num; j++) {
         Send(recv_tid, send_buf, 4, reply_buf, 4);
     }
     ticks = read_debug_timer();
@@ -64,7 +74,7 @@ void time_attack(void)
     ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    for (int j = 0; j < 10000; j++) {
+    for (int j = 0; j < num; j++) {
         Send(recv_tid, send_buf, 64, reply_buf, 64);
     }
     ticks = read_debug_timer();
@@ -75,7 +85,7 @@ void time_attack(void)
     ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    for (int j = 0; j < 10000; j++) {
+    for (int j = 0; j < num; j++) {
         Send(recv_tid, send_buf, 256, reply_buf, 256);
     }
     ticks = read_debug_timer();
@@ -89,7 +99,7 @@ void time_attack(void)
     ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    for (int j = 0; j < 10000; j++) {
+    for (int j = 0; j < num; j++) {
         Send(recv_tid, send_buf, 4, reply_buf, 4);
     }
     ticks = read_debug_timer();
@@ -99,7 +109,7 @@ void time_attack(void)
     ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    for (int j = 0; j < 10000; j++) {
+    for (int j = 0; j < num; j++) {
         Send(recv_tid, send_buf, 64, reply_buf, 64);
     }
     ticks = read_debug_timer();
@@ -110,7 +120,7 @@ void time_attack(void)
     ticks = 0;
     stop_debug_timer();
     start_debug_timer();
-    for (int j = 0; j < 10000; j++) {
+    for (int j = 0; j < num; j++) {
         Send(recv_tid, send_buf, 256, reply_buf, 256);
     }
     ticks = read_debug_timer();
@@ -233,10 +243,11 @@ void name_server_test()
 
 void umain(void)
 {
+    Create(4, time_attack);
     // TODO Perhaps move to kernel and #define the id
-    name_server_id = Create(0, name_server);
+//    name_server_id = Create(0, name_server);
 
-    Create(3, rps_tests);
+//    Create(3, rps_tests);
 
     // Create(0, name_server_test);
     
