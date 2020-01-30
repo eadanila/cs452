@@ -22,6 +22,7 @@ void print_regs(Frame *fp) {
     }
 }
 
+
 // User calls syscall then:
 // syscall (C) -> software_interupt (ARM) -> enter_kernel (ARM) -> handle_swi (C)
 
@@ -75,6 +76,15 @@ void handle_swi(int caller)
 
             set_task_state(caller, TASK_ZOMBIE);
 
+            //            clear_message_queue(caller);
+            while (peek_message(caller) > -1) {
+                assert(is_valid_task(peek_message(caller)));
+                int sender = pop_message(caller);
+                Frame *sender_frame = (Frame *)get_task_stack_pointer(sender);
+                sender_frame->r0 = -2;
+                set_task_state(sender, TASK_READY);
+            }
+
             break;
         case SYSCALL_SEND:
             DEBUG("SEND, called by %d", caller);
@@ -87,7 +97,7 @@ void handle_swi(int caller)
             
             set_task_state(caller, TASK_SEND_WAIT);
 
-            if (!is_valid_task(fp->r1)) {
+            if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
                 fp->r0 = -1;
             }
 
@@ -114,7 +124,7 @@ void handle_swi(int caller)
 
             set_task_state(caller, TASK_SEND_WAIT);
 
-            if (!is_valid_task(fp->r1)) {
+            if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
                 fp->r0 = -1;
             }
 
