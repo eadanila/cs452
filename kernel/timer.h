@@ -3,7 +3,7 @@
 #define DEBUG_TIMER_CTRL 0x100 // 1 << 8
 #define DEBUG_TIMER_HIGH_MASK 0xFF // first 8 bits
 
-void read_debug_timer(int *high, int *low);
+unsigned int read_debug_timer(void);
 void stop_debug_timer(void);
 void start_debug_timer(void);
 

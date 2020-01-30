@@ -16,18 +16,18 @@ LD = $(XBINDIR)/arm-none-eabi-ld
 # -Wall: report all warnings
 # -mcpu=arm920t: generate code for the 920t architecture
 # -msoft-float: no FP co-processor
-CFLAGS = -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../include
+CFLAGS = -O3 -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../../include
 # ASFLAGS = -g -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I../include
 
 # -static: force static linking
 # -e: set entry point
 # -nmagic: no page alignment
 # -T: use linker script
-LDFLAGS = -static -e main -nmagic -T $(SRCDIR)/linker.ld -L ../lib -L $(XLIBDIR2)
+LDFLAGS = -static -e main -nmagic -T $(SRCDIR)/linker.ld -L ../../lib -L $(XLIBDIR2)
 LIBFLAGS = -lbwio -lgcc
 
 SRCDIR = .
-BUILDDIR = ../build
+BUILDDIR = ./build
 
 C_SOURCES = $(wildcard $(SRCDIR)/*.c)
 C_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(C_SOURCES))
@@ -41,14 +41,6 @@ OBJECTS = $(C_OBJECTS) $(ASM_OBJECTS)
 BINARY = kernel.elf
 
 happy: clean all
-
-inline:
-	cp arm_lib.asm build-inline
-	cp linker.ld build-inline
-	cd build-inline && $(MAKE) clean
-	-cd build-inline && rm inline-all.c
-	python3 ./inline.py . build-inline
-	cd build-inline && $(MAKE) && $(MAKE) install
 
 all: $(BUILDDIR) $(OBJECTS) $(BINARY)
 

@@ -13,11 +13,11 @@
 
 #include "kernel.h"
 
-void handle_swi(int id);
+void handle_swi(int caller);
 
 int kcreate(int priority, uint function);
 
-int Create(int priority, void (*function)());
+int Create(int priority, void(*function)());
 int MyTid(void);
 int MyParentTid(void);
 void Yield(void);
