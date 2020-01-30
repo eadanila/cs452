@@ -83,6 +83,7 @@ void handle_swi(int caller)
                 Frame *sender_frame = (Frame *)get_task_stack_pointer(sender);
                 sender_frame->r0 = -2;
                 set_task_state(sender, TASK_READY);
+                push_task(sender);
             }
 
             break;
