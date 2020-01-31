@@ -1,12 +1,17 @@
-ASSIGNMENT = k1.elf
+ASSIGNMENT = k2.elf
 BINARY = kernel.elf
 SRCDIR = ./kernel
 BUILDDIR = ./build
 
 all: clean
+	-mkdir -p $(BUILDDIR)
 	cd $(SRCDIR) && $(MAKE)
 	cp $(BUILDDIR)/$(BINARY) ./$(ASSIGNMENT)
 
+inline: clean
+	-mkdir -p $(BUILDDIR)
+	cd $(SRCDIR) && $(MAKE) inline
+	cp $(BUILDDIR)/$(BINARY) ./$(ASSIGNMENT)
 
 fatal: CFLAGS += -DVERBOSITY=1
 fatal: kernel.elf
@@ -31,5 +36,5 @@ install:
 	-chmod o=r /u/cs452/tftp/ARM/`whoami`/kernel
 
 clean:
-	-rm -f ./$(ASSIGNMENT) ./$(BINARY) $(BUILDDIR)/$(BINARY) $(BUILDDIR)/*.s $(BUILDDIR)/*.o
+	-rm -f ./$(ASSIGNMENT) ./$(BINARY) $(BUILDDIR)/*
 

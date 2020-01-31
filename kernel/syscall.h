@@ -7,17 +7,25 @@
 #define SYSCALL_MY_TID 4
 #define SYSCALL_PARENT_TID 5
 
+#define SYSCALL_SEND 6
+#define SYSCALL_RECEIVE 7
+#define SYSCALL_REPLY 8
+
 #include "kernel.h"
 
-void handle_swi(int id);
+void handle_swi(int caller);
 
 int kcreate(int priority, uint function);
 
-int Create(int priority, void (*function)());
+int Create(int priority, void(*function)());
 int MyTid(void);
 int MyParentTid(void);
 void Yield(void);
 void Exit(void);
+
+int Send(int tid, const char *msg, int msglen, char *reply, int rplen);
+int Receive(int *tid, char *msg, int msglen);
+int Reply(int tid, const char *reply, int rplen);
 
 // Put "b scream" anywhere in assembly for basic debugging
 void scream(uint sp);

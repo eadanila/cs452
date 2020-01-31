@@ -16,18 +16,18 @@ LD = $(XBINDIR)/arm-none-eabi-ld
 # -Wall: report all warnings
 # -mcpu=arm920t: generate code for the 920t architecture
 # -msoft-float: no FP co-processor
-CFLAGS = -O3 -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../include
+CFLAGS = -O3 -g -c -fPIC -Wall -Wextra -Wno-unused-parameter -Werror -pedantic -mcpu=arm920t -msoft-float -I. -I../../include
 # ASFLAGS = -g -fPIC -Wall -mcpu=arm920t -msoft-float -I. -I../include
 
 # -static: force static linking
 # -e: set entry point
 # -nmagic: no page alignment
 # -T: use linker script
-LDFLAGS = -static -e main -nmagic -T $(SRCDIR)/linker.ld -L ../lib -L $(XLIBDIR2)
+LDFLAGS = -static -e main -nmagic -T $(SRCDIR)/linker.ld -L ../../lib -L $(XLIBDIR2)
 LIBFLAGS = -lbwio -lgcc
 
 SRCDIR = .
-BUILDDIR = ../build
+BUILDDIR = ./build
 
 C_SOURCES = $(wildcard $(SRCDIR)/*.c)
 C_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(C_SOURCES))
@@ -41,17 +41,6 @@ OBJECTS = $(C_OBJECTS) $(ASM_OBJECTS)
 BINARY = kernel.elf
 
 happy: clean all
-
-inline:
-	-mkdir -p $(BUILDDIR)
-	-rm $(BUILDDIR)/*
-	cp arm_lib.asm $(BUILDDIR)
-	cp linker.ld $(BUILDDIR)
-	python3 ./inline.py . $(BUILDDIR)
-	cd $(BUILDDIR) && $(CC) $(CFLAGS) -o inline-all.o inline-all.c
-	cd $(BUILDDIR) && $(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
-	cd $(BUILDDIR) && $(LD) $(LDFLAGS) -o $(BUILDDIR)/$(BINARY) inline-all.o arm_lib.o $(LIBFLAGS)
-	cp $(BUILDDIR)/$(BINARY) ./$(BINARY)
 
 all: $(BUILDDIR) $(OBJECTS) $(BINARY)
 
@@ -91,5 +80,5 @@ install:
 	-chmod o=r /u/cs452/tftp/ARM/`whoami`/kernel
 
 clean:
-	-rm -f ./$(BINARY) $(BUILDDIR)/*
+	-rm -f ./$(BINARY) $(BUILDDIR)/$(BINARY) $(BUILDDIR)/*.s $(BUILDDIR)/*.o
 
