@@ -207,7 +207,9 @@ void rps_tests()
 
     bwgetc(COM2);
     print(EXPLANATION_COLOR);
-    print("\n\rFirst and fourth client lower priority than second and third clients:\n\r");
+    print("\n\rFirst and fourth clients are lower priority than the second and third clients.");
+    print("\n\rThe first and fourth clients are rps_rock_clients and");
+    print("\n\rthe second and third clients are rps_paper_clients:\n\r");
     print(RESET_FORMATTING);
 
     Create(2, rps_rock_client);
