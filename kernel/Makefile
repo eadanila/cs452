@@ -91,5 +91,5 @@ install:
 	-chmod o=r /u/cs452/tftp/ARM/`whoami`/kernel
 
 clean:
-	-rm -f ./$(BINARY) $(BUILDDIR)/$(BINARY) $(BUILDDIR)/*.s $(BUILDDIR)/*.o
+	-rm -f ./$(BINARY) $(BUILDDIR)/*
 

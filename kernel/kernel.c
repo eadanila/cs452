@@ -138,8 +138,13 @@ void kcopyreply(int dest_id, int src_id) {
     int buflen = (int)dest->stk1;
 
     dest->r0 = copy(buf, buflen, msg, msglen);
+    src->r0 = dest->r0;
 
+    // if the the Send caller and Reply caller have the same priority,
+    // Send caller runs first => dest_id is queued first
     set_task_state(dest_id, TASK_READY);
+    push_task(dest_id);
+    set_task_state(src_id, TASK_READY);
     push_task(dest_id);
 }
 

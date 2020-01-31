@@ -135,10 +135,6 @@ void handle_swi(int caller)
 
             kcopyreply(fp->r1, caller);
 
-            // if both of same priority, sender runs first
-            set_task_state(caller, TASK_READY);
-            push_task(caller);
-            
             break;
         default:
             FATAL("What is this, a syscall for ants? %d? Called by %d", syscall_id, caller);
