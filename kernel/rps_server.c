@@ -205,7 +205,12 @@ void _quit(int id)
     }
 
     // Currently no response if player hasn't signed up first
-    if(game == 0) return;
+    if(game == 0)
+    { 
+        response[0] = NOT_SIGNED_UP;
+        Reply(id, response, 1); 
+        return; 
+    }
 
     if(game->p1 == id) game->p1 = -1;
     else if(game->p2 == id) game->p2 = -1;

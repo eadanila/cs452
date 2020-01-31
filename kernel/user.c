@@ -155,7 +155,17 @@ void rps_tests()
 
     bwgetc(COM2);
     print(EXPLANATION_COLOR);
-    print("\n\rSecond client doesnt play and quits:\n\r");
+    print("\n\rBoth clients don't play and quit immediately:\n\r");
+    print(RESET_FORMATTING);
+
+    Create(1, rps_quitter_client);
+    Create(1, rps_quitter_client);
+
+
+
+    bwgetc(COM2);
+    print(EXPLANATION_COLOR);
+    print("\n\rSecond client doesnt play and quits immediately:\n\r");
     print(RESET_FORMATTING);
 
     Create(1, rps_rock_lover_client);
@@ -165,11 +175,23 @@ void rps_tests()
 
     bwgetc(COM2);
     print(EXPLANATION_COLOR);
-    print("\n\rFirst client doesn't play and quits:\n\r");
+    print("\n\rFirst client doesn't play and quits immediately:\n\r");
     print(RESET_FORMATTING);
 
     Create(1, rps_quitter_client);
     Create(1, rps_rock_lover_client);
+
+
+
+    bwgetc(COM2);
+    print(EXPLANATION_COLOR);
+    print("\n\rAn abusive client and a normal client that plays once are created.");
+    print("\n\rWithout initially signing up, the abusive client tries to");
+    print("\n\rQuit -> Play(PAPER) -> Signup -> Quit -> Play(PAPER):\n\r");
+    print(RESET_FORMATTING);
+
+    Create(1, rps_abusive_client);
+    Create(1, rps_rock_client);
 
 
 
@@ -207,8 +229,8 @@ void rps_tests()
 
     bwgetc(COM2);
     print(EXPLANATION_COLOR);
-    print("\n\rFour clients all at the same priority level (same as task creating them),");
-    print("\n\rfirst two play 4 times, last two play 3 times.\n\r");
+    print("\n\rTwo clients join and begin playing before two more join.");
+    print("\n\rFirst two play 4 times and the last two play 3 times.\n\r");
     print(RESET_FORMATTING);
 
     Create(3, rps_player_1);

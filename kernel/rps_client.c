@@ -71,6 +71,16 @@ void rps_quitter_client()
     Quit(); print("rps_quitter_client quit.\n\r");
 }
 
+void rps_abusive_client()
+{
+    Quit(); print("rps_abusive_client quit before signing up.\n\r");
+    int r = Play(PAPER); print("rps_abusive_client played paper and %s\n\r", print_match_result(r));
+
+    Signup(); print("rps_abusive_client signed up.\n\r");
+    Quit(); print("rps_abusive_client quit.\n\r");
+    r = Play(PAPER); print("rps_abusive_client played paper and %s\n\r", print_match_result(r));
+}
+
 void rps_player_1()
 {
     Signup(); print("rps_player_1 signed up.\n\r");

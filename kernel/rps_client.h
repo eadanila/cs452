@@ -14,3 +14,5 @@ void rps_player_4();
 
 void rps_try_everything_1();
 void rps_try_everything_2();
+
+void rps_abusive_client();
