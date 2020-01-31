@@ -19,7 +19,7 @@ const char* print_match_result(int r)
         return "WASNT SIGNED UP";
         break;
         case OPPONENT_QUIT:
-        return "OPPONENT QUIT (who does that...)";
+        return "OPPONENT QUIT";
         break;
     }
 
@@ -77,6 +77,7 @@ void rps_player_1()
     int r = Play(PAPER); print("rps_player_1 played paper and %s.\n\r", print_match_result(r));
         r = Play(PAPER); print("rps_player_1 played paper and %s.\n\r", print_match_result(r));
         r = Play(PAPER); print("rps_player_1 played paper and %s.\n\r", print_match_result(r));
+        r = Play(PAPER); print("rps_player_1 played paper and %s.\n\r", print_match_result(r));
     Quit(); print("rps_player_1 quit.\n\r");
 }
 
@@ -84,6 +85,7 @@ void rps_player_2()
 {
     Signup(); print("rps_player_2 signed up.\n\r");
     int r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
+        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
         r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
         r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
     Quit(); print("rps_player_2 quit.\n\r");
@@ -94,6 +96,7 @@ void rps_player_3()
     Signup(); print("rps_player_3 signed up.\n\r");
     int r = Play(ROCK); print("rps_player_3 played rock and %s.\n\r", print_match_result(r));
         r = Play(ROCK); print("rps_player_3 played rock and %s.\n\r", print_match_result(r));
+        r = Play(ROCK); print("rps_player_3 played rock and %s.\n\r", print_match_result(r));
     Quit(); print("rps_player_3 quit.\n\r");
 }
 
@@ -101,6 +104,7 @@ void rps_player_4()
 {
     Signup(); print("rps_player_4 signed up.\n\r");
     int r = Play(ROCK); print("rps_player_4 played rock and %s.\n\r", print_match_result(r));
+        r = Play(ROCK); print("rps_player_4 played rock and %s.\n\r", print_match_result(r));
         r = Play(ROCK); print("rps_player_4 played rock and %s.\n\r", print_match_result(r));
     Quit(); print("rps_player_4 quit.\n\r\n\r");
 }

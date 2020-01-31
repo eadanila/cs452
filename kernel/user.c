@@ -135,11 +135,41 @@ void rps_tests()
     //       they are blocked until an opponent is found
 
     print(EXPLANATION_COLOR);
-    print("Simple Game:\n\r");
+    print("Both clients play once then quit:\n\r");
     print(RESET_FORMATTING);
 
     Create(1, rps_rock_client);
     Create(1, rps_paper_client);
+
+
+
+    bwgetc(COM2);
+    print(EXPLANATION_COLOR);
+    print("\n\rBoth clients play 3 times before quitting:\n\r");
+    print(RESET_FORMATTING);
+
+    Create(1, rps_rock_lover_client);
+    Create(1, rps_paper_lover_client);
+
+
+
+    bwgetc(COM2);
+    print(EXPLANATION_COLOR);
+    print("\n\rSecond client doesnt play and quits:\n\r");
+    print(RESET_FORMATTING);
+
+    Create(1, rps_rock_lover_client);
+    Create(1, rps_quitter_client);
+
+
+
+    bwgetc(COM2);
+    print(EXPLANATION_COLOR);
+    print("\n\rFirst client doesn't play and quits:\n\r");
+    print(RESET_FORMATTING);
+
+    Create(1, rps_quitter_client);
+    Create(1, rps_rock_lover_client);
 
 
 
@@ -167,26 +197,6 @@ void rps_tests()
 
     bwgetc(COM2);
     print(EXPLANATION_COLOR);
-    print("\n\rBoth clients play 3 times:\n\r");
-    print(RESET_FORMATTING);
-
-    Create(1, rps_rock_lover_client);
-    Create(1, rps_paper_lover_client);
-
-
-
-    bwgetc(COM2);
-    print(EXPLANATION_COLOR);
-    print("\n\rSecond client joins then instantly quits:\n\r");
-    print(RESET_FORMATTING);
-
-    Create(1, rps_rock_lover_client);
-    Create(1, rps_quitter_client);
-
-
-
-    bwgetc(COM2);
-    print(EXPLANATION_COLOR);
     print("\n\rTwo clients try every combination of games possible:\n\r");
     print(RESET_FORMATTING);
 
@@ -198,7 +208,7 @@ void rps_tests()
     bwgetc(COM2);
     print(EXPLANATION_COLOR);
     print("\n\rFour clients all at the same priority level (same as task creating them),");
-    print("\n\rfirst two play 3 times, last two play 2 times.\n\r");
+    print("\n\rfirst two play 4 times, last two play 3 times.\n\r");
     print(RESET_FORMATTING);
 
     Create(3, rps_player_1);
