@@ -116,7 +116,7 @@ void rps_player_4()
     int r = Play(ROCK); print("[%d]rps_player_4 played rock and %s.\n\r",  MyTid(), print_match_result(r)); bwgetc(COM2);
         r = Play(ROCK); print("[%d]rps_player_4 played rock and %s.\n\r",  MyTid(), print_match_result(r)); bwgetc(COM2);
         r = Play(ROCK); print("[%d]rps_player_4 played rock and %s.\n\r",  MyTid(), print_match_result(r)); bwgetc(COM2);
-    Quit(); print("[%d]rps_player_4 quit.\n\r\n\r", MyTid());
+    Quit(); print("[%d]rps_player_4 quit.\n\r", MyTid());
 }
 
 void rps_try_everything_1()
