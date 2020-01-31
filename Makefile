@@ -4,10 +4,12 @@ SRCDIR = ./kernel
 BUILDDIR = ./build
 
 all: clean
+	-mkdir -p $(BUILDDIR)
 	cd $(SRCDIR) && $(MAKE)
 	cp $(BUILDDIR)/$(BINARY) ./$(ASSIGNMENT)
 
 inline: clean
+	-mkdir -p $(BUILDDIR)
 	cd $(SRCDIR) && $(MAKE) inline
 	cp $(BUILDDIR)/$(BINARY) ./$(ASSIGNMENT)
 

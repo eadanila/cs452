@@ -43,6 +43,7 @@ BINARY = kernel.elf
 happy: clean all
 
 inline:
+	-mkdir -p $(BUILDDIR)
 	-rm $(BUILDDIR)/*
 	cp arm_lib.asm $(BUILDDIR)
 	cp linker.ld $(BUILDDIR)
