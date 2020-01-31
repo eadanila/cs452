@@ -243,11 +243,11 @@ void name_server_test()
 
 void umain(void)
 {
-    Create(4, time_attack);
+    // Create(4, time_attack);
     // TODO Perhaps move to kernel and #define the id
-//    name_server_id = Create(0, name_server);
+   name_server_id = Create(0, name_server);
 
-//    Create(3, rps_tests);
+   Create(3, rps_tests);
 
     // Create(0, name_server_test);
     
