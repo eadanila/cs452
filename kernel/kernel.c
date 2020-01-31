@@ -145,7 +145,7 @@ void kcopyreply(int dest_id, int src_id) {
     set_task_state(dest_id, TASK_READY);
     push_task(dest_id);
     set_task_state(src_id, TASK_READY);
-    push_task(dest_id);
+    push_task(src_id);
 }
 
 void kinit(void) {
