@@ -101,7 +101,7 @@ class Function():
 
     def write_function(self, outfile):
         if self.name in exclude:
-            outfile.write(str(self))
+            outfile.write(str(self) + '\n')
         else:
             outfile.write('static inline ' + str(self) + '\n')
 
