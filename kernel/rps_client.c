@@ -95,9 +95,9 @@ void rps_player_2()
 {
     Signup(); print("rps_player_2 signed up.\n\r");
     int r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
-        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
-        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
-        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r));
+        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r)); bwgetc(COM2);
+        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r)); bwgetc(COM2);
+        r = Play(ROCK); print("rps_player_2 played rock and %s.\n\r", print_match_result(r)); bwgetc(COM2);
     Quit(); print("rps_player_2 quit.\n\r");
 }
 
