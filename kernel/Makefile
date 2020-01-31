@@ -43,12 +43,14 @@ BINARY = kernel.elf
 happy: clean all
 
 inline:
-	cp arm_lib.asm build-inline
-	cp linker.ld build-inline
-	cd build-inline && $(MAKE) clean
-	-cd build-inline && rm inline-all.c
-	python3 ./inline.py . build-inline
-	cd build-inline && $(MAKE) && $(MAKE) install
+	-rm $(BUILDDIR)/*
+	cp arm_lib.asm $(BUILDDIR)
+	cp linker.ld $(BUILDDIR)
+	python3 ./inline.py . $(BUILDDIR)
+	cd $(BUILDDIR) && $(CC) $(CFLAGS) -o inline-all.o inline-all.c
+	cd $(BUILDDIR) && $(AS) $(ASFLAGS) -o arm_lib.o arm_lib.asm
+	cd $(BUILDDIR) && $(LD) $(LDFLAGS) -o $(BUILDDIR)/$(BINARY) inline-all.o arm_lib.o $(LIBFLAGS)
+	cp $(BUILDDIR)/$(BINARY) ./$(BINARY)
 
 all: $(BUILDDIR) $(OBJECTS) $(BINARY)
 
