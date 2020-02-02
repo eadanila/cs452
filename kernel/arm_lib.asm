@@ -27,8 +27,49 @@ syscall:
 
 @ TODO Add syscall code that causes a SWI and triggers enter kernel.
 
+.global irq_enter_kernel
+irq_enter_kernel:
+    push {r0-r3,r12,lr}
+    mov r0, #0x22
+    bl scream
+    mov r0, r13
+    bl scream
+    pop {r0-r3,r12,lr}
+
+    push {r0}
+
+    msr cpsr, #0b11011111
+    mov r0, r13
+    msr cpsr, #0b11010010
+
+    sub r0, r0, #4
+    str lr, [r0]
+
+    stmdb r0, {r1-r14}^
+    sub r0, r0, #56 // 14x4=56
+
+    pop {r1}
+    mov r1, #0x100
+    sub r0, r0, #4
+    str r1, [r0]
+
+    mrs r1, spsr
+    sub r0, r0, #4
+    str r1, [r0]
+
+    ldmia sp!, {r4-r11,r14}
+
+    bx lr
+
+
 enter_kernel:
-    
+    push {r0-r3,r12,lr}
+    mov r0, #0x23
+    bl scream
+    mov r0, r13
+    bl scream
+    pop {r0-r3,r12,lr}
+
     @ save the original r0 to kstack as we need r0 to store user stack ptr
     push {r0}
 
@@ -40,13 +81,13 @@ enter_kernel:
 //    ldmia sp!, {r0}
 
     @ switch to system processor mode
-    msr cpsr, #0b11111 
+    msr cpsr, #0b11011111 
 
     @ put r13 (user's sp) into r0 (shared btween svc and sys modes)
-    mov r0, r13
+    cont: mov r0, r13
 
     @ switch back into supervisor processor mode
-    msr cpsr, #0b10011
+    msr cpsr, #0b11010011
     
     @ Copy return address (lr or pc of user) onto user stack
     sub r0, r0, #4
@@ -70,13 +111,13 @@ enter_kernel:
     @ the stack pointer of the user that just exited to kernel
     ldmia sp!, {r4-r11,r14}
 
-    @ b scream
-
-    @ Once inside of kernel, enter handler
-    @b handle_swi
-
     bx lr
 
+
+// save kernel registers on kernel stack
+// switch to user mode
+// pop user registers from user stack
+// upon pop, pc will point to wherever the user left off (entry point if new task)
 enter_user:
     @ stack to return to is provided as argument in r0
     
@@ -86,9 +127,68 @@ enter_user:
     @ load spsr into r1
     ldmia r0!, {r1}
 
+    push {r0-r3,r12,lr}
+    mov r0, #0x10
+    bl scream
+    mov r0, r13
+    bl scream
+    pop {r0-r3,r12,lr}
+
+    mov r3, sp
+    mov r4, lr
+
+    mrs r2, cpsr
+    and r2, #0x1F // first 5 bits
+    cmp r2, #0x13 // supervisor mode
+    beq supervisor_mode_enter_user
+
+    cmp r2, #0x12 // IRQ mode
+    beq irq_mode_enter_user
+
+    // I got into enter_user from neither supervisor or IRQ
+    // that's not right
+    // guess I'll die.jpg
+    bl print_lr
+    b panic
+
+// set IRQ mode sp and lr to supervisor's
+supervisor_mode_enter_user:
+    msr cpsr, #0b11010010
+    mov sp, r3
+    mov lr, r4
+
+    push {r0-r3,r12,lr}
+    mov r0, #0x13
+    bl scream
+    mov r0, r13
+    bl scream
+    pop {r0-r3,r12,lr}
+
+    b finish_enter_user
+
+// set supervisor mode sp and lr to IRQ's
+irq_mode_enter_user:
+    msr cpsr, #0b11010011
+    mov sp, r3
+    mov lr, r4
+    
+    push {r0-r3,r12,lr}
+    mov r0, #0x12
+    bl scream
+    pop {r0-r3,r12,lr}
+
+    b finish_enter_user
+
+// set user mode and load registers, that'll get us in the user task
+finish_enter_user:
     @ switch to user mode and load in user registers!
     msr cpsr_all, r1
     ldmia r0, {r0-r15}
+
+    // should not get here
+    // someone done goofed
+    bl print_lr
+    b panic
 
 
 enable_cache:
