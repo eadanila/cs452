@@ -34,9 +34,13 @@ int main(int argc, char *argv[]) {
             Frame *fp = (Frame *)get_task_stack_pointer(id);
             fp->r0 = 1;
             handle_swi(id);
+            stop_tc1();
+            *((volatile unsigned int *)0x8081000C) = 0;
+            start_tc1();
         }
         else if (cpsr_mode == 0x13) {
             DEBUG("SWI CAUGHT");
+            *((volatile uint *)0x8092008) = 0;
             handle_swi(id);
         }
         else
