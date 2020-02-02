@@ -29,21 +29,14 @@ syscall:
 
 .global irq_enter_kernel
 irq_enter_kernel:
-    push {r0-r3,r12,lr}
-    mov r0, #0x22
-    bl scream
-    mov r0, r13
-    bl scream
-    pop {r0-r3,r12,lr}
-
     push {r0}
 
     msr cpsr, #0b11011111
     mov r0, r13
     msr cpsr, #0b11010010
 
-    sub r0, r0, #4
-    str lr, [r0]
+    sub lr, lr, #4
+    stmdb r0!, {lr}
 
     stmdb r0, {r1-r14}^
     sub r0, r0, #56 // 14x4=56
@@ -63,22 +56,8 @@ irq_enter_kernel:
 
 
 enter_kernel:
-    push {r0-r3,r12,lr}
-    mov r0, #0x23
-    bl scream
-    mov r0, r13
-    bl scream
-    pop {r0-r3,r12,lr}
-
     @ save the original r0 to kstack as we need r0 to store user stack ptr
     push {r0}
-
-//    @ copy the user stack ptr onto our stack
-//    stmdb sp, {r13}^
-//    sub sp, sp, #4
-//
-//    @ copy the top of our stack (which has the user's sp) into r0
-//    ldmia sp!, {r0}
 
     @ switch to system processor mode
     msr cpsr, #0b11011111 
@@ -127,15 +106,7 @@ enter_user:
     @ load spsr into r1
     ldmia r0!, {r1}
 
-    push {r0-r3,r12,lr}
-    mov r0, #0x10
-    bl scream
-    mov r0, r13
-    bl scream
-    pop {r0-r3,r12,lr}
-
     mov r3, sp
-    mov r4, lr
 
     mrs r2, cpsr
     and r2, #0x1F // first 5 bits
@@ -155,14 +126,6 @@ enter_user:
 supervisor_mode_enter_user:
     msr cpsr, #0b11010010
     mov sp, r3
-    mov lr, r4
-
-    push {r0-r3,r12,lr}
-    mov r0, #0x13
-    bl scream
-    mov r0, r13
-    bl scream
-    pop {r0-r3,r12,lr}
 
     b finish_enter_user
 
@@ -170,13 +133,7 @@ supervisor_mode_enter_user:
 irq_mode_enter_user:
     msr cpsr, #0b11010011
     mov sp, r3
-    mov lr, r4
     
-    push {r0-r3,r12,lr}
-    mov r0, #0x12
-    bl scream
-    pop {r0-r3,r12,lr}
-
     b finish_enter_user
 
 // set user mode and load registers, that'll get us in the user task
