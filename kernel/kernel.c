@@ -164,8 +164,7 @@ void kinit(void) {
         *p = (uint)unhandled_exception_handler;
         p = p + 1;
     }
-    uint *handler_dest = (uint *) IVT_SWI_ADDR;
-    *handler_dest = (uint)enter_kernel;
+    *(IVT_SWI_ADDR) = (uint)enter_kernel;
 
     enable_cache();
 

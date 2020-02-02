@@ -16,8 +16,9 @@ typedef unsigned int uint;
 
 #define CSPR_USER_MODE 0x10
 
-#define IVT_BASE_ADDR 0x20;
-#define IVT_SWI_ADDR 0x28;
+#define IVT_BASE_ADDR (unsigned int *)0x20
+#define IVT_SWI_ADDR (unsigned int *)0x28
+#define IVT_IRQ_ADDR (unsigned int *)0x38
 
 // Error codes
 #define OUT_OF_TASK_DESCRIPTORS -2
