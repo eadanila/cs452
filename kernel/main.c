@@ -11,6 +11,8 @@
 
 #include "timer.h"
 
+#include "frame.h"
+
 int main(int argc, char *argv[]) {
     kinit();
 
@@ -26,7 +28,19 @@ int main(int argc, char *argv[]) {
     for (;;) {
         LOG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
-        handle_swi(id);
+        uint cpsr_mode = get_cpsr() & 0x1F;
+        if (cpsr_mode == 0x12) {
+            DEBUG("IRQ CAUGHT");
+            Frame *fp = (Frame *)get_task_stack_pointer(id);
+            fp->r0 = 1;
+            handle_swi(id);
+        }
+        else if (cpsr_mode == 0x13) {
+            DEBUG("SWI CAUGHT");
+            handle_swi(id);
+        }
+        else
+            panic();
 
         id = pop_task();
         set_running_task(id);
