@@ -165,8 +165,13 @@ void kinit(void) {
         p = p + 1;
     }
     *(IVT_SWI_ADDR) = (uint)enter_kernel;
+    *(IVT_IRQ_ADDR) = (uint)irq_enter_kernel;
 
     enable_cache();
+
+//    *((volatile uint *)0x800B0010) = 0xffffffff;
+    *((volatile uint *)0x800C0010) = 0x400;
+
 
     DEBUG("kint() finished");
 }
