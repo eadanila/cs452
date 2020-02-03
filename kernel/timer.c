@@ -17,7 +17,7 @@ void stop_tc1(void) {
 }
 
 void start_tc1(void) {
-    *(TC1_LOAD) = 71;
+    *(TC1_LOAD) = 20;
     *(TC1_CTRL) |= (TC1_ENABLE_MASK);
 }
 
