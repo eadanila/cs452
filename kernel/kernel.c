@@ -165,7 +165,7 @@ void kinit(void) {
         p = p + 1;
     }
     *(IVT_SWI_ADDR) = (uint)enter_kernel;
-    *(IVT_IRQ_ADDR) = (uint)irq_enter_kernel;
+    *(IVT_IRQ_ADDR) = (uint)enter_kernel;
 
     enable_cache();
     start_tc1();
