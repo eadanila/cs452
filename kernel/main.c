@@ -18,6 +18,9 @@ int main(int argc, char *argv[]) {
 
     DEBUG("Creating first task -> %x", umain);
 
+
+    uint cpsr_mode = 0x13;
+
     int id = kcreate(3, (uint)umain);
 
     int sid = pop_task();
@@ -27,16 +30,21 @@ int main(int argc, char *argv[]) {
 
     for (;;) {
         LOG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
+
+        if (cpsr_mode == 0x12) {
+            stop_tc1();
+            *((volatile unsigned int *)0x8081000C) = 0;
+            start_tc1();
+        }
+
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
-        uint cpsr_mode = get_cpsr() & 0x1F;
+        cpsr_mode = get_cpsr() & 0x1F;
+
         if (cpsr_mode == 0x12) {
             DEBUG("IRQ CAUGHT");
             Frame *fp = (Frame *)get_task_stack_pointer(id);
             fp->r0 = 1;
             handle_swi(id);
-            stop_tc1();
-            *((volatile unsigned int *)0x8081000C) = 0;
-            start_tc1();
         }
         else if (cpsr_mode == 0x13) {
             DEBUG("SWI CAUGHT");
