@@ -298,7 +298,7 @@ void umain(void)
     // // Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
     
     for (int i = 0; ; i++) {
-        print("%d\r\n",i);
+        print("%d\n\r",i);
     }
 
     print("FirstUserTask: exiting\r\n");
