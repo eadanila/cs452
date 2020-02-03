@@ -27,70 +27,66 @@ syscall:
 
 @ TODO Add syscall code that causes a SWI and triggers enter kernel.
 
-.global irq_enter_kernel
-irq_enter_kernel:
+enter_kernel:
     push {r0}
 
+    mrs r0, cpsr
+    and r0, #0x1F // first 5 bits
+    cmp r0, #0x13 // supervisor mode
+    beq supervisor_mode_enter_kernel
+
+    cmp r0, #0x12 // IRQ mode
+    beq irq_mode_enter_kernel
+
+    // I got into enter_user from neither supervisor or IRQ
+    // that's not right
+    // guess I'll die.jpg
+    bl print_lr
+    b panic
+
+irq_mode_enter_kernel:
     msr cpsr, #0b11011111
     mov r0, r13
     msr cpsr, #0b11010010
 
     sub lr, lr, #4
-    stmdb r0!, {lr}
 
-    stmdb r0, {r1-r14}^
-    sub r0, r0, #56 // 14x4=56
+    b finish_enter_kernel
 
-    pop {r1}
-    mov r1, #0x100
-    sub r0, r0, #4
-    str r1, [r0]
-
-    mrs r1, spsr
-    sub r0, r0, #4
-    str r1, [r0]
-
-    ldmia sp!, {r4-r11,r14}
-
-    bx lr
-
-
-enter_kernel:
-    @ save the original r0 to kstack as we need r0 to store user stack ptr
-    push {r0}
-
+supervisor_mode_enter_kernel:
     @ switch to system processor mode
     msr cpsr, #0b11011111 
 
     @ put r13 (user's sp) into r0 (shared btween svc and sys modes)
-    cont: mov r0, r13
+    mov r0, r13
 
     @ switch back into supervisor processor mode
     msr cpsr, #0b11010011
+
+    b finish_enter_kernel
     
+finish_enter_kernel:
     @ Copy return address (lr or pc of user) onto user stack
-    sub r0, r0, #4
-    str lr, [r0]
+    stmdb r0!, {lr}
 
     @ Push r1-r14 onto user stack
-    stmdb r0, {r1-r14}^
+    stmdb r0, {r1-r14}^ // when I make stmdb decrement r0 itself (use `r0!`), arm-none-eabi-as complains that it is UNPREDICTABLE
     sub r0, r0, #56 // 14x4=56
 
-    @ Put the original r0 onto user stack
-    pop {r1}
-    sub r0, r0, #4
-    str r1, [r0]
-
-    @ Save spsr
+    @ Put the original r0 and spsr onto user stack
+    pop {r2}
     mrs r1, spsr
-    sub r0, r0, #4
-    str r1, [r0]
+    stmdb r0!, {r1,r2}
 
     @ Pop r1-r14, r0 is the return address and will contain
     @ the stack pointer of the user that just exited to kernel
     ldmia sp!, {r4-r11,r14}
 
     bx lr
+
+// we shouldn't get here because enter_user should switch our address space
+    b print_lr
+    b panic
 
 
 // save kernel registers on kernel stack
