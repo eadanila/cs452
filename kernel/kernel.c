@@ -168,10 +168,13 @@ void kinit(void) {
     *(IVT_IRQ_ADDR) = (uint)enter_kernel;
 
     enable_cache();
-    start_tc1();
 
     *((volatile uint *)0x800B0010) = 0x10;
     //*((volatile uint *)0x800C0010) = 0x8;
+
+    set_timer_mode(TIMER_TC1, 1);
+    set_timer_load_value(TIMER_TC1, 20);
+    enable_timer(TIMER_TC1);
 
     DEBUG("kint() finished");
 }
