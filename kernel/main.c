@@ -13,6 +13,8 @@
 
 #include "frame.h"
 
+#include "interrupt.h"
+
 int main(int argc, char *argv[]) {
     kinit();
 
@@ -32,7 +34,7 @@ int main(int argc, char *argv[]) {
         LOG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
 
         if (cpsr_mode == 0x12) {
-            clear_timer(TIMER_TC1);
+            handle_interrupt();
         }
 
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
