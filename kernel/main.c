@@ -32,9 +32,7 @@ int main(int argc, char *argv[]) {
         LOG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
 
         if (cpsr_mode == 0x12) {
-            stop_tc1();
-            *((volatile unsigned int *)0x8081000C) = 0;
-            start_tc1();
+            clear_timer(TIMER_TC1);
         }
 
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
