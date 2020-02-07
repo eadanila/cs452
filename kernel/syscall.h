@@ -11,6 +11,8 @@
 #define SYSCALL_RECEIVE 7
 #define SYSCALL_REPLY 8
 
+#define SYSCALL_AWAIT 9
+
 #include "kernel.h"
 
 void handle_swi(int caller);
@@ -26,6 +28,8 @@ void Exit(void);
 int Send(int tid, const char *msg, int msglen, char *reply, int rplen);
 int Receive(int *tid, char *msg, int msglen);
 int Reply(int tid, const char *reply, int rplen);
+
+int AwaitEvent(int eventid);
 
 // Put "b scream" anywhere in assembly for basic debugging
 void scream(uint sp);

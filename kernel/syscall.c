@@ -136,6 +136,11 @@ void handle_swi(int caller)
             kcopyreply(fp->r1, caller);
 
             break;
+        case SYSCALL_AWAIT:
+            DEBUG("AWAIT, called by %d", caller);
+
+            set_task_state(caller, TASK_AWAIT);
+            break;
         default:
             FATAL("What is this, a syscall for ants? %d? Called by %d", syscall_id, caller);
             break;
@@ -174,6 +179,10 @@ int Receive(int *tid, char *msg, int msglen) {
 
 int Reply(int tid, const char *reply, int rplen) {
     return syscall(SYSCALL_REPLY, (int)tid, (int)reply, (int)rplen, 0, 0);
+}
+
+int AwaitEvent(int eventid) {
+    return syscall(SYSCALL_AWAIT, (int)eventid, 0, 0, 0, 0);
 }
 
 void exit_handler() {

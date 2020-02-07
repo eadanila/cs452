@@ -10,6 +10,8 @@
 #define TASK_RECV_WAIT 3
 #define TASK_RPLY_WAIT 4
 
+#define TASK_AWAIT 5
+
 #define TASK_ZOMBIE 7
 
 #define PARENT_DEAD -10
