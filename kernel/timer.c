@@ -18,28 +18,32 @@ void start_debug_timer(void) {
 }
 
 
-void disable_timer(int timer) {
-    switch (timer) {
+void disable_timer(uint timer_id) {
+    assert(timer_id == TIMER_TC1 || timer_id == TIMER_TC2 || timer_id == TIMER_TC3 || timer_id == TIMER_TC4);
+
+    switch (timer_id) {
     case TIMER_TC1:
-        *TIMER_1_CONTROL_REGISTER |= TIMER_ENABLE;
+        *TIMER_1_CONTROL_REGISTER &= ~TIMER_ENABLE;
         break;
     case TIMER_TC2:
-        *TIMER_2_CONTROL_REGISTER |= TIMER_ENABLE;
+        *TIMER_2_CONTROL_REGISTER &= ~TIMER_ENABLE;
         break;
     case TIMER_TC3:
-        *TIMER_3_CONTROL_REGISTER |= TIMER_ENABLE;
+        *TIMER_3_CONTROL_REGISTER &= ~TIMER_ENABLE;
         break;
     case TIMER_TC4:
         stop_debug_timer();
         break;
     default:
-        FATAL("Invalid timer ID: %d", timer);
+        FATAL("Invalid timer ID: %d", timer_id);
     }
 }
 
 
-void enable_timer(int timer) {
-    switch (timer) {
+void enable_timer(uint timer_id) {
+    assert(timer_id == TIMER_TC1 || timer_id == TIMER_TC2 || timer_id == TIMER_TC3 || timer_id == TIMER_TC4);
+
+    switch (timer_id) {
     case TIMER_TC1:
         *TIMER_1_CONTROL_REGISTER |= TIMER_ENABLE;
         break;
@@ -53,13 +57,15 @@ void enable_timer(int timer) {
         start_debug_timer();
         break;
     default:
-        FATAL("Invalid timer ID: %d", timer);
+        FATAL("Invalid timer ID: %d", timer_id);
     }
 }
 
 
-void clear_timer(int timer) {
-    switch (timer) {
+void clear_timer(uint timer_id) {
+    assert(timer_id == TIMER_TC1 || timer_id == TIMER_TC2 || timer_id == TIMER_TC3);
+
+    switch (timer_id) {
     case TIMER_TC1:
         *TIMER_1_CLEAR_REGISTER = 0;
         break;
@@ -71,15 +77,18 @@ void clear_timer(int timer) {
         break;
     case TIMER_TC4:
     default:
-        FATAL("Invalid timer ID for clear_timer: %d", timer);
+        FATAL("Invalid timer ID for clear_timer: %d", timer_id);
     }
 }
 
 
-void set_timer_mode(int timer, int mode) {
+void set_timer_mode(uint timer_id, uint mode) {
+    assert(timer_id == TIMER_TC1 || timer_id == TIMER_TC2 || timer_id == TIMER_TC3);
+    assert(mode == 0 || mode == 1);
+
     volatile uint *timer_control;
 
-    switch (timer) {
+    switch (timer_id) {
     case TIMER_TC1:
         timer_control = TIMER_1_CONTROL_REGISTER;
         break;
@@ -91,7 +100,7 @@ void set_timer_mode(int timer, int mode) {
         break;
     case TIMER_TC4:
     default:
-        FATAL("Invalid timer ID for set_timer_mode: %d", timer);
+        FATAL("Invalid timer ID for set_timer_mode: %d", timer_id);
         return ;
     }
 
@@ -108,10 +117,13 @@ void set_timer_mode(int timer, int mode) {
 }
 
 
-void set_timer_clock(int timer, int clock) {
+void set_timer_clock(uint timer_id, uint clock) {
+    assert(timer_id == TIMER_TC1 || timer_id == TIMER_TC2 || timer_id == TIMER_TC3);
+    assert(clock == 0 || clock == 1);
+
     volatile uint *timer_control;
 
-    switch (timer) {
+    switch (timer_id) {
     case TIMER_TC1:
         timer_control = TIMER_1_CONTROL_REGISTER;
         break;
@@ -123,7 +135,7 @@ void set_timer_clock(int timer, int clock) {
         break;
     case TIMER_TC4:
     default:
-        FATAL("Invalid timer ID for set_timer_clock: %d", timer);
+        FATAL("Invalid timer ID for set_timer_clock: %d", timer_id);
         return ;
     }
 
@@ -140,10 +152,10 @@ void set_timer_clock(int timer, int clock) {
 }
 
 
-void set_timer_load_value(int timer, int value) {
-    assert(((timer == TIMER_TC1 || timer == TIMER_TC2) && value <= 0xFFFF) || timer == TIMER_TC3);
+void set_timer_load_value(uint timer_id, uint value) {
+    assert(((timer_id == TIMER_TC1 || timer_id == TIMER_TC2) && value <= 0xFFFF) || timer_id == TIMER_TC3);
 
-    switch (timer) {
+    switch (timer_id) {
     case TIMER_TC1:
         *TIMER_1_LOAD_REGISTER = value;
         break;
@@ -155,13 +167,15 @@ void set_timer_load_value(int timer, int value) {
         break;
     case TIMER_TC4:
     default:
-        FATAL("Invalid timer ID for set_timer_load_value: %d", timer);
+        FATAL("Invalid timer ID for set_timer_load_value: %d", timer_id);
     }
 }
 
 
-uint read_timer(int timer) {
-    switch(timer) {
+uint read_timer(uint timer_id) {
+    assert(timer_id == TIMER_TC1 || timer_id == TIMER_TC2 || timer_id == TIMER_TC3 || timer_id == TIMER_TC4);
+
+    switch(timer_id) {
     case TIMER_TC1:
         return *TIMER_1_VALUE_REGISTER;
     case TIMER_TC2:
@@ -171,7 +185,7 @@ uint read_timer(int timer) {
     case TIMER_TC4:
         return read_debug_timer();
     default:
-        FATAL("Invalid timer ID for read_timer: %d", timer);
+        FATAL("Invalid timer ID for read_timer: %d", timer_id);
         return 0;
     }
 }
