@@ -2,11 +2,47 @@
 #include "timer.h"
 #include "logging.h"
 
+void enable_interrupt(uint interrupt) {
+    assert(interrupt <= 63);
+
+    switch (interrupt) {
+    case INTERRUPT_TC1UI:
+        *INTERRUPT_VIC1_ENABLE_ADDR |= 1 << INTERRUPT_TC1UI;
+        break;
+    case INTERRUPT_TC2UI:
+        *INTERRUPT_VIC1_ENABLE_ADDR |= 1 << INTERRUPT_TC2UI;
+        break;
+    case INTERRUPT_TC3UI:
+        *INTERRUPT_VIC2_ENABLE_ADDR |= 1 << (INTERRUPT_TC3UI - 32);
+        break;
+    default:
+        FATAL("Attempt to enable unhandled interrupt: %d", interrupt);
+        break;
+    }
+}
+
+
+void disable_interrupt(uint interrupt) {
+    assert(interrupt <= 63);
+
+    if (interrupt < 32) {
+        *INTERRUPT_VIC1_CLEAR_ADDR |= 1 << interrupt;
+    } else {
+        *INTERRUPT_VIC2_CLEAR_ADDR |= 1 << (interrupt - 32);
+    }
+}
+
+
+void clear_vic(void) {
+    *INTERRUPT_VIC1_CLEAR_ADDR = 0xFFFFFFFF;
+    *INTERRUPT_VIC2_CLEAR_ADDR = 0xFFFFFFFF;
+}
+
+
 void handle_interrupt(void) {
-    // get reg boi 0x800B0000 and 0x800C0000
-    // check which bit is enabled for interrupt handling
+    LOG("handle_interrupt called");
     
-    uint irq_status_lo = *((unsigned int *) 0x800B0000);
+    uint irq_status_lo = *INTERRUPT_VIC1_STATUS_ADDR;
 
     switch (irq_status_lo) {
     case 0x10: // 2^4
@@ -21,7 +57,7 @@ void handle_interrupt(void) {
         break;
     }
 
-    uint irq_status_hi = *((unsigned int *) 0x800C0000);
+    uint irq_status_hi = *INTERRUPT_VIC2_STATUS_ADDR;
     switch(irq_status_hi) {
     case 0x80000:
         clear_timer(TIMER_TC3);
