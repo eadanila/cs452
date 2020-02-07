@@ -66,9 +66,6 @@ supervisor_mode_enter_kernel:
     b finish_enter_kernel
     
 finish_enter_kernel:
-    @ Copy return address (lr or pc of user) onto user stack
-    stmdb r0!, {lr}
-
     @ Push r1-r14 onto user stack
     stmdb r0, {r1-r14}^ // when I make stmdb decrement r0 itself (use `r0!`), arm-none-eabi-as complains that it is UNPREDICTABLE
     sub r0, r0, #56 // 14x4=56
@@ -77,6 +74,9 @@ finish_enter_kernel:
     pop {r2}
     mrs r1, spsr
     stmdb r0!, {r1,r2}
+
+    @ Copy return address (lr or pc of user) onto user stack
+    stmdb r0!, {lr}
 
     @ Pop r1-r14, r0 is the return address and will contain
     @ the stack pointer of the user that just exited to kernel
@@ -99,9 +99,6 @@ enter_user:
     @ push kernel registers onto kernel stack
     stmdb sp!, {r4-r11,r14}
 
-    @ load spsr into r1
-    ldmia r0!, {r1}
-
     mov r3, sp
 
     mrs r2, cpsr
@@ -118,14 +115,16 @@ enter_user:
     bl print_lr
     b panic
 
-// set IRQ mode sp and lr to supervisor's
+// we were in supervisor mode
+// switch to IRQ mode and set the SP to the one saved from supervisor
 supervisor_mode_enter_user:
     msr cpsr, #0b11010010
     mov sp, r3
 
     b finish_enter_user
 
-// set supervisor mode sp and lr to IRQ's
+// we were in IRQ mode
+// switch to supervisor mode and set the SP to the one saved from IRQ
 irq_mode_enter_user:
     msr cpsr, #0b11010011
     mov sp, r3
@@ -134,9 +133,13 @@ irq_mode_enter_user:
 
 // set user mode and load registers, that'll get us in the user task
 finish_enter_user:
-    @ switch to user mode and load in user registers!
-    msr cpsr_all, r1
-    ldmia r0, {r0-r15}
+    ldmia r0!, {lr}
+
+    ldmia r0!, {r1}
+    msr spsr, r1
+
+    ldmia r0, {r0-r14}^
+    movs pc, lr
 
     // should not get here
     // someone done goofed
