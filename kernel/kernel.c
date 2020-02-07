@@ -45,12 +45,7 @@ void panic(void) {
     print("Ironic. He could save others from death, but not himself.\r\n");
     print("\r\nPS: This is a panic.\r\n");
 
-    // unregister handlers and exit to redboot
-    uint *p = (uint *)0x20;
-    for (int i = 0; i < 8; i++) {
-        *p = 0;
-        p = p + 1;
-    }
+    // return to redboot
     return_to_redboot();
 }
 
@@ -147,6 +142,13 @@ void kcopyreply(int dest_id, int src_id) {
     set_task_state(src_id, TASK_READY);
     push_task(src_id);
 }
+
+
+void kcleanup(void) {
+    disable_timer(TIMER_TC1);
+    clear_timer(TIMER_TC1);
+}
+
 
 void kinit(void) {
     // Initialize COM2

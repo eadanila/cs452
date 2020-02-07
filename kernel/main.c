@@ -61,6 +61,8 @@ int main(int argc, char *argv[]) {
             break;
     }
 
+    kcleanup();
+
     print("Kernel: exiting\r\n");
     return 0;
 }
