@@ -1,11 +1,13 @@
 #include "task.h"
 #include "logging.h"
+#include "constants.h"
 
+int active_tasks;
 int running_task;
 Task task_list[MAX_TASKS_ALLOWED];
 
 int __is_defined_task_state(int state) {
-    return (state == -100) || (state >= 0 && state <= 4) || (state == 7);
+    return (state == -100) || (state >= 0 && state <= 5) || (state == 7);
 }
 
 // Seeks through task_list for the next available ID
@@ -45,6 +47,7 @@ void set_task_state(int id, int state) {
                 task_list[i].p_id = PARENT_ZOMBIE;
             }
         }
+        active_tasks -= 1;
     }
 
     if (id == running_task) {
@@ -81,6 +84,7 @@ void set_task_stack_pointer(int id, unsigned int *sp) {
 }
 
 void init_task_list(void) {
+    active_tasks = 0;
     running_task = -1;
     for (int i = 0; i < MAX_TASKS_ALLOWED; i++) {
         task_list[i].t_id = i;
@@ -110,7 +114,7 @@ Task get_task_by_id(int id) {
 
 int allocate_task(int p_id, int pri) {
     assert(is_valid_task(p_id) || p_id == -1);
-    assert(pri >= 0 && pri < MIN_PRIORITY);
+    assert(pri >= 0 && pri <= MIN_PRIORITY);
 
     int id = __get_next_available_id();
     if (id == TASK_INVALID)
@@ -121,13 +125,22 @@ int allocate_task(int p_id, int pri) {
     task_list[id].stack_base = (unsigned int *)(MEMORY_START + id*TASK_MEMORY_SIZE);
     task_list[id].state = TASK_READY;
 
+    active_tasks += 1;
+
     return task_list[id].t_id;
 }
 
 void free_task(int id) {
     assert(is_valid_task(id));
 
+    if (task_list[id].state != TASK_ZOMBIE)
+        active_tasks -= 1;
+
     task_list[id].state = TASK_INVALID;
+}
+
+int get_active_tasks_count(void) {
+    return active_tasks;
 }
 
 int is_valid_task(int id) {
