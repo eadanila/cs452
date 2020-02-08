@@ -8,6 +8,8 @@
 #include "rps_server.h"
 #include "rps_client.h"
 
+#include "await.h"
+
 #define EXPLANATION_COLOR GREEN_TEXT
 
 int recv_tid; int tid;
@@ -297,11 +299,11 @@ void umain(void)
 
     // // Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
     
-    for (int i = 0; ; i++) {
-        print("%d\n\r",i);
+    for (int i = 0; i < 1000; i++) {
+        AwaitEvent(EVENT_TIMER1_INTERRUPT);
     }
 
-    print("FirstUserTask: exiting\r\n");
+    print("FirstUserTask: exiting\n\r");
 
     // Exit();
 }
