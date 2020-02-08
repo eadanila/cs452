@@ -8,6 +8,7 @@
 #include "task.h"
 #include "frame.h"
 #include "message_queue.h"
+#include "await.h"
 
 void print_regs(Frame *fp) {
 
@@ -140,6 +141,8 @@ void handle_swi(int caller)
             DEBUG("AWAIT, called by %d", caller);
 
             set_task_state(caller, TASK_AWAIT);
+            event_await((int)fp->r1, caller);
+
             break;
         default:
             FATAL("What is this, a syscall for ants? %d? Called by %d", syscall_id, caller);
