@@ -167,6 +167,11 @@ void kinit(void) {
     print("\033[2J\033[2r");
     print("\n\r");
 
+    // SysSWLock
+    *((volatile unsigned int *) 0x809300C0) = 0xAA;
+    // SHena
+    *((volatile unsigned int *) 0x80930080) |= 1;
+
     init_task_list();
     init_pqueue();
     init_message_queue();
