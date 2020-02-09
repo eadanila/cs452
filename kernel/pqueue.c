@@ -30,6 +30,7 @@ int highest_priorty()
 void push_task(uint id)
 {
     assert(task_schedule.free != 0) // Ran out of tasks!
+    assert(is_valid_task(id));
 
     int pri = get_task_by_id(id).priority;
     DEBUG("Adding task %d to queue %d", id, pri);

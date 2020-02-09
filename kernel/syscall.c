@@ -101,6 +101,9 @@ void handle_swi(int caller)
 
             if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
                 fp->r0 = -1;
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
+                break;
             }
 
             if (get_task_state(fp->r1) == TASK_RECV_WAIT) {
@@ -127,11 +130,17 @@ void handle_swi(int caller)
             set_task_state(caller, TASK_SEND_WAIT);
 
             if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
                 fp->r0 = -1;
+                break;
             }
 
             if (get_task_state(fp->r1) != TASK_RPLY_WAIT) {
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
                 fp->r0 = -2;
+                break;
             }
 
             kcopyreply(fp->r1, caller);

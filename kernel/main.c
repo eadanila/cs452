@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
 
 
     uint cpsr_mode = 0x13;
+    int init_done = 0;
     
     int idle_task_id = kcreate(7, (uint)idle_task);
     DEBUG("Idle task ID: %d", idle_task_id);
@@ -56,7 +57,10 @@ int main(int argc, char *argv[]) {
         else if (cpsr_mode == 0x13) {
             DEBUG("SWI CAUGHT");
             handle_swi(id);
-            if (get_active_tasks_count() == 1)
+
+            if(get_active_tasks_count() > LONG_RUNNING_TASK_COUNT)
+                init_done = 1;
+            else if (get_active_tasks_count() <= LONG_RUNNING_TASK_COUNT && init_done) 
                 break;
         }
 
