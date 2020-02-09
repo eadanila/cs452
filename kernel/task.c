@@ -7,7 +7,7 @@ int running_task;
 Task task_list[MAX_TASKS_ALLOWED];
 
 int __is_defined_task_state(int state) {
-    return (state == -100) || (state >= 0 && state <= 5) || (state == 7);
+    return (state == -100) || (state >= 0 && state <= 5) || (state == 7) || (state >= -11 && state <= -10);
 }
 
 // Seeks through task_list for the next available ID
@@ -144,6 +144,6 @@ int get_active_tasks_count(void) {
 }
 
 int is_valid_task(int id) {
-    return (id < MAX_TASKS_ALLOWED) && task_list[id].state != TASK_INVALID;
+    return (id >= 0) && (id < MAX_TASKS_ALLOWED) && task_list[id].state != TASK_INVALID;
 }
 
