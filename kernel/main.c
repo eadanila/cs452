@@ -11,6 +11,10 @@
 #include "interrupt.h"
 #include "idle.h"
 
+#include "frame.h"
+
+#include "interrupt.h"
+
 int main(int argc, char *argv[]) {
     kinit();
 
