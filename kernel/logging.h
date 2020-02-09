@@ -4,7 +4,6 @@
 #include <bwio.h>
 #include "arm_lib.h"
 #include "syscall.h"
-
 #define LOGLEVEL_NONE 0  // logging off
 
 #define FATAL_RAINBOW 0 // Alleviate pain caused by fatal errors
@@ -50,7 +49,7 @@
 #define PRINTLOG(type, msg, ...) { \
     bwprintf(COM2, "%s:<%s:%d> - ", type, __FILE__, __LINE__); \
     bwprintf(COM2, msg, ##__VA_ARGS__); \
-    bwprintf(COM2, "\r\n"); \
+    bwprintf(COM2, "\n\r"); \
 }
 
 
@@ -61,7 +60,7 @@
     bwprintf(COM2, "%s:<%s:%d> - ", type, __FILE__, __LINE__); \
     bwprintf(COM2, msg, ##__VA_ARGS__); \
     bwprintf(COM2, RESET_FORMATTING); \
-    bwprintf(COM2, "\r\n"); \
+    bwprintf(COM2, "\n\r"); \
 }
 
 
@@ -73,7 +72,7 @@
     bwprintf(COM2, "%s:<%s:%d> - ", type, __FILE__, __LINE__); \
     bwprintf(COM2, msg, ##__VA_ARGS__); \
     bwprintf(COM2, RESET_FORMATTING); \
-    bwprintf(COM2, "\r\n"); \
+    bwprintf(COM2, "\n\r"); \
 }
 
 // Prints with rainbow text, resets formatting
@@ -97,7 +96,7 @@
         bwputc(COM2, msg[i]); \
     } \
     bwprintf(COM2, RESET_FORMATTING); \
-    bwprintf(COM2, "\r\n"); \
+    bwprintf(COM2, "\n\r"); \
 }
 
 

@@ -11,10 +11,17 @@
 
 #include "timer.h"
 
+#include "frame.h"
+
+#include "interrupt.h"
+
 int main(int argc, char *argv[]) {
     kinit();
 
     DEBUG("Creating first task -> %x", umain);
+
+
+    uint cpsr_mode = 0x13;
 
     int id = kcreate(3, (uint)umain);
 
@@ -25,8 +32,27 @@ int main(int argc, char *argv[]) {
 
     for (;;) {
         LOG("Got ID %d from PQ %d", id, get_task_by_id(id).priority);
+
+        if (cpsr_mode == 0x12) {
+            handle_interrupt();
+        }
+
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
-        handle_swi(id);
+        cpsr_mode = get_cpsr() & 0x1F;
+
+        if (cpsr_mode == 0x12) {
+            DEBUG("IRQ CAUGHT");
+            Frame *fp = (Frame *)get_task_stack_pointer(id);
+            fp->r0 = 1;
+            handle_swi(id);
+        }
+        else if (cpsr_mode == 0x13) {
+            DEBUG("SWI CAUGHT");
+            *((volatile uint *)0x8092008) = 0;
+            handle_swi(id);
+        }
+        else
+            panic();
 
         id = pop_task();
         set_running_task(id);
@@ -34,6 +60,8 @@ int main(int argc, char *argv[]) {
         if (id < 0)
             break;
     }
+
+    kcleanup();
 
     print("Kernel: exiting\r\n");
     return 0;

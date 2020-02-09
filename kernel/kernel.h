@@ -9,6 +9,7 @@ int kcreate(int priority, uint function);
 void kcopymessage(int dest_id, int src_id);
 void kcopyreply(int dest_id, int src_id);
 
+void kcleanup(void);
 void kinit(void);
 
 int user_mode(void);

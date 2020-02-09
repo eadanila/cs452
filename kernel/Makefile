@@ -77,7 +77,7 @@ error: $(BINARY)
 warn: CFLAGS += -DVERBOSITY=3
 warn: $(BINARY)
 
-log: CLAGS += -DVERBOSITY=4
+log: CFLAGS += -DVERBOSITY=4
 log: $(BINARY)
 
 debug: CFLAGS += -DVERBOSITY=5
