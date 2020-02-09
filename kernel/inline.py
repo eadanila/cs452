@@ -77,7 +77,7 @@ class Module():
         outfile.write('\n// ----- END   {0} -----\n'.format(self.c))
 
 
-exclude = ['main', 'panic', 'print_lr']
+exclude = ['main', 'panic', 'print_lr', 'scream']
 functions = []
 class Function():
     def __init__(self, tag):

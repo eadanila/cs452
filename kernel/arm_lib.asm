@@ -28,67 +28,123 @@ syscall:
 @ TODO Add syscall code that causes a SWI and triggers enter kernel.
 
 enter_kernel:
-    
-    @ save the original r0 to kstack as we need r0 to store user stack ptr
     push {r0}
 
-//    @ copy the user stack ptr onto our stack
-//    stmdb sp, {r13}^
-//    sub sp, sp, #4
-//
-//    @ copy the top of our stack (which has the user's sp) into r0
-//    ldmia sp!, {r0}
+    mrs r0, cpsr
+    and r0, #0x1F // first 5 bits
+    cmp r0, #0x13 // supervisor mode
+    beq supervisor_mode_enter_kernel
 
+    cmp r0, #0x12 // IRQ mode
+    beq irq_mode_enter_kernel
+
+    // I got into enter_user from neither supervisor or IRQ
+    // that's not right
+    // guess I'll die.jpg
+    bl print_lr
+    b panic
+
+irq_mode_enter_kernel:
+    msr cpsr, #0b11011111
+    mov r0, r13
+    msr cpsr, #0b11010010
+
+    sub lr, lr, #4
+
+    b finish_enter_kernel
+
+supervisor_mode_enter_kernel:
     @ switch to system processor mode
-    msr cpsr, #0b11111 
+    msr cpsr, #0b11011111 
 
     @ put r13 (user's sp) into r0 (shared btween svc and sys modes)
     mov r0, r13
 
     @ switch back into supervisor processor mode
-    msr cpsr, #0b10011
-    
-    @ Copy return address (lr or pc of user) onto user stack
-    sub r0, r0, #4
-    str lr, [r0]
+    msr cpsr, #0b11010011
 
+    b finish_enter_kernel
+    
+finish_enter_kernel:
     @ Push r1-r14 onto user stack
-    stmdb r0, {r1-r14}^
+    stmdb r0, {r1-r14}^ // when I make stmdb decrement r0 itself (use `r0!`), arm-none-eabi-as complains that it is UNPREDICTABLE
     sub r0, r0, #56 // 14x4=56
 
-    @ Put the original r0 onto user stack
-    pop {r1}
-    sub r0, r0, #4
-    str r1, [r0]
-
-    @ Save spsr
+    @ Put the original r0 and spsr onto user stack
+    pop {r2}
     mrs r1, spsr
-    sub r0, r0, #4
-    str r1, [r0]
+    stmdb r0!, {r1,r2}
+
+    @ Copy return address (lr or pc of user) onto user stack
+    stmdb r0!, {lr}
 
     @ Pop r1-r14, r0 is the return address and will contain
     @ the stack pointer of the user that just exited to kernel
     ldmia sp!, {r4-r11,r14}
 
-    @ b scream
-
-    @ Once inside of kernel, enter handler
-    @b handle_swi
-
     bx lr
 
+// we shouldn't get here because enter_user should switch our address space
+    b print_lr
+    b panic
+
+
+// save kernel registers on kernel stack
+// switch to user mode
+// pop user registers from user stack
+// upon pop, pc will point to wherever the user left off (entry point if new task)
 enter_user:
     @ stack to return to is provided as argument in r0
     
     @ push kernel registers onto kernel stack
     stmdb sp!, {r4-r11,r14}
 
-    @ load spsr into r1
-    ldmia r0!, {r1}
+    mov r3, sp
 
-    @ switch to user mode and load in user registers!
-    msr cpsr_all, r1
-    ldmia r0, {r0-r15}
+    mrs r2, cpsr
+    and r2, #0x1F // first 5 bits
+    cmp r2, #0x13 // supervisor mode
+    beq supervisor_mode_enter_user
+
+    cmp r2, #0x12 // IRQ mode
+    beq irq_mode_enter_user
+
+    // I got into enter_user from neither supervisor or IRQ
+    // that's not right
+    // guess I'll die.jpg
+    bl print_lr
+    b panic
+
+// we were in supervisor mode
+// switch to IRQ mode and set the SP to the one saved from supervisor
+supervisor_mode_enter_user:
+    msr cpsr, #0b11010010
+    mov sp, r3
+
+    b finish_enter_user
+
+// we were in IRQ mode
+// switch to supervisor mode and set the SP to the one saved from IRQ
+irq_mode_enter_user:
+    msr cpsr, #0b11010011
+    mov sp, r3
+    
+    b finish_enter_user
+
+// set user mode and load registers, that'll get us in the user task
+finish_enter_user:
+    ldmia r0!, {lr}
+
+    ldmia r0!, {r1}
+    msr spsr, r1
+
+    ldmia r0, {r0-r14}^
+    movs pc, lr
+
+    // should not get here
+    // someone done goofed
+    bl print_lr
+    b panic
 
 
 enable_cache:

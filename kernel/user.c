@@ -275,9 +275,9 @@ void umain(void)
 {
     // Create(4, time_attack);
     // TODO Perhaps move to kernel and #define the id
-   name_server_id = Create(0, name_server);
+//   name_server_id = Create(0, name_server);
 
-   Create(3, rps_tests);
+//   Create(3, rps_tests);
 
     // Create(0, name_server_test);
     
@@ -296,8 +296,12 @@ void umain(void)
     // print("Created: %d\r\n", id);
 
     // // Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
+    
+    for (int i = 0; ; i++) {
+        print("%d\n\r",i);
+    }
 
-    // print("FirstUserTask: exiting\r\n");
+    print("FirstUserTask: exiting\r\n");
 
     // Exit();
 }

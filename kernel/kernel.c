@@ -12,6 +12,8 @@
 
 #include "timer.h"
 
+#include "interrupt.h"
+
 void unhandled_exception_handler(void);
 
 void print_lr(uint u) {
@@ -45,12 +47,8 @@ void panic(void) {
     print("Ironic. He could save others from death, but not himself.\r\n");
     print("\r\nPS: This is a panic.\r\n");
 
-    // unregister handlers and exit to redboot
-    uint *p = (uint *)0x20;
-    for (int i = 0; i < 8; i++) {
-        *p = 0;
-        p = p + 1;
-    }
+    // cleanup and return to redboot
+    kcleanup();
     return_to_redboot();
 }
 
@@ -148,7 +146,19 @@ void kcopyreply(int dest_id, int src_id) {
     push_task(src_id);
 }
 
+
+void kcleanup(void) {
+    clear_vic();
+    disable_interrupt(INTERRUPT_TC3UI);
+    disable_timer(TIMER_TC1);
+    clear_timer(TIMER_TC1);
+}
+
+
 void kinit(void) {
+    // start with a clean kernel
+    kcleanup();
+
     // Initialize COM2
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
@@ -164,10 +174,16 @@ void kinit(void) {
         *p = (uint)unhandled_exception_handler;
         p = p + 1;
     }
-    uint *handler_dest = (uint *) IVT_SWI_ADDR;
-    *handler_dest = (uint)enter_kernel;
+    *(IVT_SWI_ADDR) = (uint)enter_kernel;
+    *(IVT_IRQ_ADDR) = (uint)enter_kernel;
 
     enable_cache();
+
+    enable_interrupt(INTERRUPT_TC1UI);
+
+    set_timer_mode(TIMER_TC1, 1);
+    set_timer_load_value(TIMER_TC1, 20);
+    enable_timer(TIMER_TC1);
 
     DEBUG("kint() finished");
 }
