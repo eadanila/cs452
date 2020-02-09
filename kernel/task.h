@@ -10,12 +10,12 @@
 #define TASK_RECV_WAIT 3
 #define TASK_RPLY_WAIT 4
 
+#define TASK_AWAIT 5
+
 #define TASK_ZOMBIE 7
 
 #define PARENT_DEAD -10
 #define PARENT_ZOMBIE -11
-
-#include "constants.h"
 
 // t_id, p_id, priority, stack_base, and pc should be set when a
 // task is created and never changed
@@ -86,6 +86,8 @@ int allocate_task(int p_id, int pri);
 // Frees a task by setting its state to TASK_INVALID so that
 // it can be allocated later
 void free_task(int id);
+
+int get_active_tasks_count(void);
 
 //  Return: 0 if id is not in [0, MAX_ALLOWED_TASKS) or if
 //          id describes a task with TASK_INVALID state

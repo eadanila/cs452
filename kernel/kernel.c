@@ -13,6 +13,7 @@
 #include "timer.h"
 
 #include "interrupt.h"
+#include "await.h"
 
 void unhandled_exception_handler(void);
 
@@ -163,11 +164,18 @@ void kinit(void) {
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
 
-    print("\r\n");
+    print("\033[2J\033[2r");
+    print("\n\r");
+
+    // SysSWLock
+    *((volatile unsigned int *) 0x809300C0) = 0xAA;
+    // SHena
+    *((volatile unsigned int *) 0x80930080) |= 1;
 
     init_task_list();
     init_pqueue();
     init_message_queue();
+    init_event_wait_tid_list();
     
     uint *p = (uint *) IVT_BASE_ADDR;
     for (int i = 0; i < 8; i++) {

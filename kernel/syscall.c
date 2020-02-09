@@ -8,6 +8,7 @@
 #include "task.h"
 #include "frame.h"
 #include "message_queue.h"
+#include "await.h"
 
 void print_regs(Frame *fp) {
 
@@ -100,6 +101,9 @@ void handle_swi(int caller)
 
             if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
                 fp->r0 = -1;
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
+                break;
             }
 
             if (get_task_state(fp->r1) == TASK_RECV_WAIT) {
@@ -126,14 +130,27 @@ void handle_swi(int caller)
             set_task_state(caller, TASK_SEND_WAIT);
 
             if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
                 fp->r0 = -1;
+                break;
             }
 
             if (get_task_state(fp->r1) != TASK_RPLY_WAIT) {
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
                 fp->r0 = -2;
+                break;
             }
 
             kcopyreply(fp->r1, caller);
+
+            break;
+        case SYSCALL_AWAIT:
+            DEBUG("AWAIT, called by %d", caller);
+
+            set_task_state(caller, TASK_AWAIT);
+            event_await((int)fp->r1, caller);
 
             break;
         default:
@@ -174,6 +191,10 @@ int Receive(int *tid, char *msg, int msglen) {
 
 int Reply(int tid, const char *reply, int rplen) {
     return syscall(SYSCALL_REPLY, (int)tid, (int)reply, (int)rplen, 0, 0);
+}
+
+int AwaitEvent(int eventid) {
+    return syscall(SYSCALL_AWAIT, (int)eventid, 0, 0, 0, 0);
 }
 
 void exit_handler() {

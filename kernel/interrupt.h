@@ -34,7 +34,7 @@ void clear_vic(void);
 
 // Called by the kernel to handle interrupts. Does all the probing of
 // interrupt addresses itself.
-void handle_interrupt(void);
+void handle_interrupt(uint runner);
 
 #endif
 

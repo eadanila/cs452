@@ -7,6 +7,9 @@
 #include "name_server.h"
 #include "rps_server.h"
 #include "rps_client.h"
+#include "clock_server.h"
+
+#include "await.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -271,13 +274,83 @@ void name_server_test()
     print("who is CCC?: %d\n\r", WhoIs("CCC"));
 }
 
+void clock_client()
+{
+    char message[1];
+    char reply[2];
+
+    Send(MyParentTid(), message, 0, reply, 2);
+
+    int cs_id = WhoIs("clock_server");
+    int my_tid = MyTid();
+
+    for(int i = 0; i != reply[1]; i++)
+    {
+        Delay(cs_id, reply[0]);
+        print("Tid: %d, Delay Interval: %d, Delays completed: %d\n\r", my_tid, reply[0], i+1);
+    } 
+}
+
+void clock_server_test()
+{
+    int c1 = Create(3, clock_client);
+    int c2 = Create(4, clock_client);
+    int c3 = Create(5, clock_client);
+    int c4 = Create(6, clock_client);
+
+    char msg[2];
+
+    int dummy;
+
+    Receive(&dummy, msg, 0);
+    Receive(&dummy, msg, 0);
+    Receive(&dummy, msg, 0);
+    Receive(&dummy, msg, 0);
+
+    // c1++;
+    // c2++;
+    // c3++;
+    // c4++;
+
+    msg[0] = 10; msg[1] = 20; Reply(c1, msg, 2);
+    msg[0] = 23; msg[1] = 9; Reply(c2, msg, 2);
+    msg[0] = 33; msg[1] = 6; Reply(c3, msg, 2);
+    msg[0] = 71; msg[1] = 3; Reply(c4, msg, 2);
+}
+
+// 0   1   2   3
+// LSB         MSB
+// ┬
+// └─── pointer
+// When index 0 is cast to an int pointer, ints are placed in memory as shown above.
+// The int populates memory in increasing order.
+
+void byte_alignment_test()
+{
+    char test[32];
+    for(int i = 0; i != 32; i++) test[i] = 0;
+
+    *((int*)&test[0]) = 0xdeadbeef;
+
+    print("\n\r");
+
+    for(int i = 0; i != 32; i++) {print("%x", test[i]); print("\n\r");}
+}
+
 void umain(void)
 {
-    // Create(4, time_attack);
+    
     // TODO Perhaps move to kernel and #define the id
-//   name_server_id = Create(0, name_server);
+    name_server_id = Create(0, name_server);
+    Create(1, clock_server);
 
-//   Create(3, rps_tests);
+    Create(3, clock_server_test);
+
+    // Create(2, byte_alignment_test);
+
+    // Create(4, time_attack);
+
+    // Create(3, rps_tests);
 
     // Create(0, name_server_test);
     
@@ -297,11 +370,10 @@ void umain(void)
 
     // // Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
     
-    for (int i = 0; ; i++) {
-        print("%d\n\r",i);
-    }
+    // for (int i = 0; i < 1000; i++) {
+    //     AwaitEvent(EVENT_TIMER1_INTERRUPT);
+    // }
 
-    print("FirstUserTask: exiting\r\n");
-
-    // Exit();
+    print("umain: exiting\n\r");
+    // print("FirstUserTask: exiting\n\r");
 }
