@@ -28,6 +28,8 @@ int main(int argc, char *argv[]) {
     DEBUG("Idle task ID: %d", idle_task_id);
     int id = kcreate(3, (uint)umain);
 
+    start_time = 0;
+    end_time = 0;
     idle_time = 0;
 
     // sanity check
@@ -74,7 +76,7 @@ int main(int argc, char *argv[]) {
 
     kcleanup();
 
-    print("Kernel: exiting\r\n");
+    print("Kernel: exiting\n\r");
     return 0;
 }
 

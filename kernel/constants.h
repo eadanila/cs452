@@ -16,9 +16,13 @@ typedef unsigned int uint;
 
 #define CSPR_USER_MODE 0x10
 
-#define IVT_BASE_ADDR (unsigned int *)0x20
-#define IVT_SWI_ADDR (unsigned int *)0x28
-#define IVT_IRQ_ADDR (unsigned int *)0x38
+#define IVT_BASE_ADDR (volatile unsigned int *)0x20
+#define IVT_SWI_ADDR (volatile unsigned int *)0x28
+#define IVT_IRQ_ADDR (volatile unsigned int *)0x38
+
+#define SYS_SW_LOCK_ADDR (volatile unsigned int *)0x809300C0
+#define SW_HALT_ENABLE_ADDR (volatile unsigned int *)0x80930080
+#define HALT_MODE_ADDR (volatile unsigned int *)0x80930008
 
 // Error codes
 #define OUT_OF_TASK_DESCRIPTORS -2

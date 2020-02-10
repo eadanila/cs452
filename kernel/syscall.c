@@ -12,14 +12,14 @@
 
 void print_regs(Frame *fp) {
 
-    print("fp: %x\r\n", fp);
+    print("fp: %x\n\r", fp);
 
-    print("cspr: %x\r\n", fp->cspr);
-    print("registers...\r\n");
+    print("cspr: %x\n\r", fp->cspr);
+    print("registers...\n\r");
     uint *p = (uint *)(&(fp->cspr) + 1);
     for (int i = 0; i < 16; i++) {
         print("%d: ", i);
-        print("r%d: %x\r\n", i, *(p+i));
+        print("r%d: %x\n\r", i, *(p+i));
     }
 }
 
@@ -150,7 +150,13 @@ void handle_swi(int caller)
             DEBUG("AWAIT, called by %d", caller);
 
             set_task_state(caller, TASK_AWAIT);
-            event_await((int)fp->r1, caller);
+            int valid = event_await((int)fp->r1, caller);
+
+            if (valid == -1) {
+                fp->r0 = -1;
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
+            }
 
             break;
         default:
@@ -203,6 +209,6 @@ void exit_handler() {
 
 void scream(uint sp)
 {
-    print("scream: %x\r\n", sp);
+    print("scream: %x\n\r", sp);
 }
 
