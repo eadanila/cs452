@@ -1,11 +1,11 @@
 The executable file is found in the student environment under: 
-/u/cs452/tftp/ARM/vscurtu/k2/kernel
+/u/cs452/tftp/ARM/vscurtu/k3/kernel
 
 To build, use the following commands at the root of the repository on a student environmnet computer:
 	make 
 
 To run the precompiled kernel, use the following command in redboot: 
-	load ARM/vscurtu/k2/kernel; go
+	load ARM/vscurtu/k3/kernel; go
 
 Group members:
 Victor Scurtu (vscurtu: 20678028)

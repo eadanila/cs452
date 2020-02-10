@@ -8,17 +8,18 @@
 #include "task.h"
 #include "frame.h"
 #include "message_queue.h"
+#include "await.h"
 
 void print_regs(Frame *fp) {
 
-    print("fp: %x\r\n", fp);
+    print("fp: %x\n\r", fp);
 
-    print("cspr: %x\r\n", fp->cspr);
-    print("registers...\r\n");
+    print("cspr: %x\n\r", fp->cspr);
+    print("registers...\n\r");
     uint *p = (uint *)(&(fp->cspr) + 1);
     for (int i = 0; i < 16; i++) {
         print("%d: ", i);
-        print("r%d: %x\r\n", i, *(p+i));
+        print("r%d: %x\n\r", i, *(p+i));
     }
 }
 
@@ -100,6 +101,9 @@ void handle_swi(int caller)
 
             if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
                 fp->r0 = -1;
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
+                break;
             }
 
             if (get_task_state(fp->r1) == TASK_RECV_WAIT) {
@@ -126,14 +130,33 @@ void handle_swi(int caller)
             set_task_state(caller, TASK_SEND_WAIT);
 
             if (!is_valid_task(fp->r1) || get_task_state(fp->r1) == TASK_ZOMBIE) {
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
                 fp->r0 = -1;
+                break;
             }
 
             if (get_task_state(fp->r1) != TASK_RPLY_WAIT) {
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
                 fp->r0 = -2;
+                break;
             }
 
             kcopyreply(fp->r1, caller);
+
+            break;
+        case SYSCALL_AWAIT:
+            DEBUG("AWAIT, called by %d", caller);
+
+            set_task_state(caller, TASK_AWAIT);
+            int valid = event_await((int)fp->r1, caller);
+
+            if (valid == -1) {
+                fp->r0 = -1;
+                set_task_state(caller, TASK_READY);
+                push_task(caller);
+            }
 
             break;
         default:
@@ -176,12 +199,16 @@ int Reply(int tid, const char *reply, int rplen) {
     return syscall(SYSCALL_REPLY, (int)tid, (int)reply, (int)rplen, 0, 0);
 }
 
+int AwaitEvent(int eventid) {
+    return syscall(SYSCALL_AWAIT, (int)eventid, 0, 0, 0, 0);
+}
+
 void exit_handler() {
     Exit();
 }
 
 void scream(uint sp)
 {
-    print("scream: %x\r\n", sp);
+    print("scream: %x\n\r", sp);
 }
 

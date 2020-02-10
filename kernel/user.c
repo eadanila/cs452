@@ -7,6 +7,7 @@
 #include "name_server.h"
 #include "rps_server.h"
 #include "rps_client.h"
+#include "clock_server.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -43,7 +44,7 @@ void test_recv256(void) {
 void send_stuff(void) {
     char send_buf[256];
     char reply_buf[256];
-    print("ret code %d\r\n", Send(recv_tid, send_buf, 4, reply_buf, 4));
+    print("ret code %d\n\r", Send(recv_tid, send_buf, 4, reply_buf, 4));
 }
 
 void test_exit(void) {
@@ -57,7 +58,7 @@ void time_attack(void) {
     int recv_pri = 5;
     int num = 10000;
 
-    print("Sender priority\r\n");
+    print("Sender priority\n\r");
 
     recv_tid = Create(recv_pri, test_recv4);
     ticks = 0;
@@ -67,7 +68,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 4, reply_buf, 4);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 4, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 4, ticks);
 
 
     recv_tid = Create(recv_pri, test_recv64);
@@ -78,7 +79,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 64, reply_buf, 64);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 64, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 64, ticks);
 
 
     recv_tid = Create(recv_pri, test_recv256);
@@ -89,11 +90,11 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 256, reply_buf, 256);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 256, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 256, ticks);
 
 
     recv_pri = 0;
-    print("Receiver priority\r\n")
+    print("Receiver priority\n\r")
 
     recv_tid = Create(recv_pri, test_recv4);
     ticks = 0;
@@ -103,7 +104,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 4, reply_buf, 4);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 4, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 4, ticks);
 
     recv_tid = Create(recv_pri, test_recv64);
     ticks = 0;
@@ -113,7 +114,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 64, reply_buf, 64);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 64, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 64, ticks);
 
 
     recv_tid = Create(recv_pri, test_recv256);
@@ -124,7 +125,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 256, reply_buf, 256);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 256, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 256, ticks);
 }
 
 void rps_tests()
@@ -271,13 +272,112 @@ void name_server_test()
     print("who is CCC?: %d\n\r", WhoIs("CCC"));
 }
 
+void clock_client()
+{
+    char message[1];
+    char reply[2];
+
+    Send(MyParentTid(), message, 0, reply, 2);
+    // Delay interval is now in reply[0] and number of delays is in reply[1]
+
+    int cs_id = WhoIs("clock_server");
+    int my_tid = MyTid();
+
+    for(int i = 0; i != reply[1]; i++)
+    {
+        Delay(cs_id, reply[0]);
+        print("Tid: %d, Delay Interval: %d, Delays completed: %d\n\r", my_tid, reply[0], i+1);
+        // print("Tid: %d, Delay Interval: %d, Delays completed: %d, Total delay: %d\n\r", my_tid, reply[0], i+1, (i+1)*reply[0]);
+    } 
+}
+
+void clock_server_test()
+{
+    // Create clock and name servers
+    name_server_id = Create(0, name_server);
+    Create(0, clock_server);
+
+    // Create 4 clients with required priorties
+    int c1 = Create(3, clock_client);
+    int c2 = Create(4, clock_client);
+    int c3 = Create(5, clock_client);
+    int c4 = Create(6, clock_client);
+
+    char msg[2];
+
+    int dummy;
+
+    Receive(&dummy, msg, 0);
+    Receive(&dummy, msg, 0);
+    Receive(&dummy, msg, 0);
+    Receive(&dummy, msg, 0);
+
+    // c1++;
+    // c2++;
+    // c3++;
+    // c4++;
+
+    msg[0] = 10; msg[1] = 20; Reply(c1, msg, 2);
+    msg[0] = 23; msg[1] = 9; Reply(c2, msg, 2);
+    msg[0] = 33; msg[1] = 6; Reply(c3, msg, 2);
+    msg[0] = 71; msg[1] = 3; Reply(c4, msg, 2);
+}
+
+// 0   1   2   3
+// LSB         MSB
+// ┬
+// └─── pointer
+// When index 0 is cast to an int pointer, ints are placed in memory as shown above.
+// The int populates memory in increasing order.
+
+void byte_alignment_test()
+{
+    char test[32];
+    for(int i = 0; i != 32; i++) test[i] = 0;
+
+    *((int*)&test[0]) = 0xdeadbeef;
+
+    print("\n\r");
+
+    for(int i = 0; i != 32; i++) {print("%x", test[i]); print("\n\r");}
+}
+
+void clock_server_error_test()
+{
+    int cs = WhoIs("clock_server");
+
+    print("Should get \n\r-1, -1, TIME, -1, -1, -2, TIME, -1, -1, -2, TIME \n\r");
+
+    print("Should be: -1,   Got %d\n\r", Time(21));
+    print("Should be: -1,   Got %d\n\r", Time(-20));
+    Delay(cs, 5);
+    print("Should be: TIME, Got %d\n\r", Time(cs));
+    print("Should be: -1,   Got %d\n\r", Delay(21, 10));
+    print("Should be: -1,   Got %d\n\r", Delay(-21, 10));
+    print("Should be: -2,   Got %d\n\r", Delay(cs, -20));
+    print("Should be: TIME, Got %d\n\r", Delay(cs, 23));
+    print("Should be: -1,   Got %d\n\r", DelayUntil(21, 23));
+    print("Should be: -1,   Got %d\n\r", DelayUntil(-21, 10));
+    print("Should be: -2,   Got %d\n\r", DelayUntil(cs, -20));
+    print("Should be: TIME, Got %d\n\r", DelayUntil(cs, 23));
+}
+
 void umain(void)
 {
-    // Create(4, time_attack);
+    
     // TODO Perhaps move to kernel and #define the id
-   name_server_id = Create(0, name_server);
+    // name_server_id = Create(0, name_server);
+    // Create(0, clock_server);
 
-   Create(3, rps_tests);
+    Create(3, clock_server_test); // FirstUserTask
+
+    // Create(3, clock_server_error_test);
+
+    // Create(2, byte_alignment_test);
+
+    // Create(4, time_attack);
+
+    // Create(3, rps_tests);
 
     // Create(0, name_server_test);
     
@@ -290,14 +390,17 @@ void umain(void)
     // int id = 0;
     // // 3 is lower priority than 1
     // id = Create(3, recv_task);
-    // print("Created: %d\r\n", id)
+    // print("Created: %d\n\r", id)
 
     // id = Create(3, send_task);
-    // print("Created: %d\r\n", id);
+    // print("Created: %d\n\r", id);
 
     // // Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
+    
+    // for (int i = 0; i < 1000; i++) {
+    //     AwaitEvent(EVENT_TIMER1_INTERRUPT);
+    // }
 
-    // print("FirstUserTask: exiting\r\n");
-
-    // Exit();
+    print("umain: exiting\n\r");
+    // print("FirstUserTask: exiting\n\r");
 }

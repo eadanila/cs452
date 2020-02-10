@@ -12,6 +12,9 @@
 
 #include "timer.h"
 
+#include "interrupt.h"
+#include "await.h"
+
 void unhandled_exception_handler(void);
 
 void print_lr(uint u) {
@@ -27,30 +30,26 @@ int user_mode(void) {
 void panic(void) {
     // something bad has happened and now the kernel is in a panic
     // print panic message and return to redboot
-    print("\r\n");
-    print("Did you ever hear the tragedy of Darth Plagueis The Wise?\r\n");
-    print("I thought not. It’s not a story the Jedi would tell you.\r\n");
-    print("It’s a Sith legend. Darth Plagueis was a Dark Lord of the\r\n");
-    print("Sith, so powerful and so wise he could use the Force to\r\n");
-    print("influence the midichlorians to create life. He had such a\r\n");
-    print("knowledge of the dark side that he could even keep the\r\n");
-    print("ones he cared about from dying. The dark side of the\r\n");
-    print("Force is a pathway to many abilities some consider to be\r\n");
-    print("unnatural. He became so powerful the only thing he was\r\n");
-    print("afraid of was losing his power, which eventually, of\r\n");
-    print("course, he did. Unfortunately, he taught his apprentice\r\n");
-    print("everything he knew, then his apprentice killed him in his\r\n");
-    print("sleep.\r\n\r\n");
+    print("\n\r");
+    print("Did you ever hear the tragedy of Darth Plagueis The Wise?\n\r");
+    print("I thought not. It’s not a story the Jedi would tell you.\n\r");
+    print("It’s a Sith legend. Darth Plagueis was a Dark Lord of the\n\r");
+    print("Sith, so powerful and so wise he could use the Force to\n\r");
+    print("influence the midichlorians to create life. He had such a\n\r");
+    print("knowledge of the dark side that he could even keep the\n\r");
+    print("ones he cared about from dying. The dark side of the\n\r");
+    print("Force is a pathway to many abilities some consider to be\n\r");
+    print("unnatural. He became so powerful the only thing he was\n\r");
+    print("afraid of was losing his power, which eventually, of\n\r");
+    print("course, he did. Unfortunately, he taught his apprentice\n\r");
+    print("everything he knew, then his apprentice killed him in his\n\r");
+    print("sleep.\n\r\n\r");
 
-    print("Ironic. He could save others from death, but not himself.\r\n");
-    print("\r\nPS: This is a panic.\r\n");
+    print("Ironic. He could save others from death, but not himself.\n\r");
+    print("\n\rPS: This is a panic.\n\r");
 
-    // unregister handlers and exit to redboot
-    uint *p = (uint *)0x20;
-    for (int i = 0; i < 8; i++) {
-        *p = 0;
-        p = p + 1;
-    }
+    // cleanup and return to redboot
+    kcleanup();
     return_to_redboot();
 }
 
@@ -148,26 +147,52 @@ void kcopyreply(int dest_id, int src_id) {
     push_task(src_id);
 }
 
+
+void kcleanup(void) {
+    clear_vic();
+    disable_interrupt(INTERRUPT_TC3UI);
+    disable_timer(TIMER_TC1);
+    clear_timer(TIMER_TC1);
+}
+
+
 void kinit(void) {
+    // start with a clean kernel
+    kcleanup();
+
     // Initialize COM2
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
 
-    print("\r\n");
+    print("\033[2J\033[2r");
+    print("\033[s\033[HIDLE: 0%%\t\033[u");
+    print("\n\r");
+
+    // the ep93xx reference said to write these values here to enable
+    // putting the processor in HALT
+    *(SYS_SW_LOCK_ADDR) = 0xAA;
+    *(SW_HALT_ENABLE_ADDR) |= 1;
 
     init_task_list();
     init_pqueue();
     init_message_queue();
+    init_event_wait_tid_list();
     
     uint *p = (uint *) IVT_BASE_ADDR;
     for (int i = 0; i < 8; i++) {
         *p = (uint)unhandled_exception_handler;
         p = p + 1;
     }
-    uint *handler_dest = (uint *) IVT_SWI_ADDR;
-    *handler_dest = (uint)enter_kernel;
+    *(IVT_SWI_ADDR) = (uint)software_enter_kernel;
+    *(IVT_IRQ_ADDR) = (uint)hardware_enter_kernel;
 
     enable_cache();
+
+    enable_interrupt(INTERRUPT_TC1UI);
+
+    set_timer_mode(TIMER_TC1, 1);
+    set_timer_load_value(TIMER_TC1, 20);
+    enable_timer(TIMER_TC1);
 
     DEBUG("kint() finished");
 }
