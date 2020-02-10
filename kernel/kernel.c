@@ -30,23 +30,23 @@ int user_mode(void) {
 void panic(void) {
     // something bad has happened and now the kernel is in a panic
     // print panic message and return to redboot
-    print("\r\n");
-    print("Did you ever hear the tragedy of Darth Plagueis The Wise?\r\n");
-    print("I thought not. It’s not a story the Jedi would tell you.\r\n");
-    print("It’s a Sith legend. Darth Plagueis was a Dark Lord of the\r\n");
-    print("Sith, so powerful and so wise he could use the Force to\r\n");
-    print("influence the midichlorians to create life. He had such a\r\n");
-    print("knowledge of the dark side that he could even keep the\r\n");
-    print("ones he cared about from dying. The dark side of the\r\n");
-    print("Force is a pathway to many abilities some consider to be\r\n");
-    print("unnatural. He became so powerful the only thing he was\r\n");
-    print("afraid of was losing his power, which eventually, of\r\n");
-    print("course, he did. Unfortunately, he taught his apprentice\r\n");
-    print("everything he knew, then his apprentice killed him in his\r\n");
-    print("sleep.\r\n\r\n");
+    print("\n\r");
+    print("Did you ever hear the tragedy of Darth Plagueis The Wise?\n\r");
+    print("I thought not. It’s not a story the Jedi would tell you.\n\r");
+    print("It’s a Sith legend. Darth Plagueis was a Dark Lord of the\n\r");
+    print("Sith, so powerful and so wise he could use the Force to\n\r");
+    print("influence the midichlorians to create life. He had such a\n\r");
+    print("knowledge of the dark side that he could even keep the\n\r");
+    print("ones he cared about from dying. The dark side of the\n\r");
+    print("Force is a pathway to many abilities some consider to be\n\r");
+    print("unnatural. He became so powerful the only thing he was\n\r");
+    print("afraid of was losing his power, which eventually, of\n\r");
+    print("course, he did. Unfortunately, he taught his apprentice\n\r");
+    print("everything he knew, then his apprentice killed him in his\n\r");
+    print("sleep.\n\r\n\r");
 
-    print("Ironic. He could save others from death, but not himself.\r\n");
-    print("\r\nPS: This is a panic.\r\n");
+    print("Ironic. He could save others from death, but not himself.\n\r");
+    print("\n\rPS: This is a panic.\n\r");
 
     // cleanup and return to redboot
     kcleanup();
@@ -165,12 +165,13 @@ void kinit(void) {
     bwsetfifo(COM2, OFF);
 
     print("\033[2J\033[2r");
+    print("\033[s\033[HIDLE: 0%%\t\033[u");
     print("\n\r");
 
-    // SysSWLock
-    *((volatile unsigned int *) 0x809300C0) = 0xAA;
-    // SHena
-    *((volatile unsigned int *) 0x80930080) |= 1;
+    // the ep93xx reference said to write these values here to enable
+    // putting the processor in HALT
+    *(SYS_SW_LOCK_ADDR) = 0xAA;
+    *(SW_HALT_ENABLE_ADDR) |= 1;
 
     init_task_list();
     init_pqueue();
@@ -182,8 +183,8 @@ void kinit(void) {
         *p = (uint)unhandled_exception_handler;
         p = p + 1;
     }
-    *(IVT_SWI_ADDR) = (uint)enter_kernel;
-    *(IVT_IRQ_ADDR) = (uint)enter_kernel;
+    *(IVT_SWI_ADDR) = (uint)software_enter_kernel;
+    *(IVT_IRQ_ADDR) = (uint)hardware_enter_kernel;
 
     enable_cache();
 

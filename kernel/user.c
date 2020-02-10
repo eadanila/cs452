@@ -9,8 +9,6 @@
 #include "rps_client.h"
 #include "clock_server.h"
 
-#include "await.h"
-
 #define EXPLANATION_COLOR GREEN_TEXT
 
 int recv_tid; int tid;
@@ -46,7 +44,7 @@ void test_recv256(void) {
 void send_stuff(void) {
     char send_buf[256];
     char reply_buf[256];
-    print("ret code %d\r\n", Send(recv_tid, send_buf, 4, reply_buf, 4));
+    print("ret code %d\n\r", Send(recv_tid, send_buf, 4, reply_buf, 4));
 }
 
 void test_exit(void) {
@@ -60,7 +58,7 @@ void time_attack(void) {
     int recv_pri = 5;
     int num = 10000;
 
-    print("Sender priority\r\n");
+    print("Sender priority\n\r");
 
     recv_tid = Create(recv_pri, test_recv4);
     ticks = 0;
@@ -70,7 +68,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 4, reply_buf, 4);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 4, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 4, ticks);
 
 
     recv_tid = Create(recv_pri, test_recv64);
@@ -81,7 +79,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 64, reply_buf, 64);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 64, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 64, ticks);
 
 
     recv_tid = Create(recv_pri, test_recv256);
@@ -92,11 +90,11 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 256, reply_buf, 256);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 256, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 256, ticks);
 
 
     recv_pri = 0;
-    print("Receiver priority\r\n")
+    print("Receiver priority\n\r")
 
     recv_tid = Create(recv_pri, test_recv4);
     ticks = 0;
@@ -106,7 +104,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 4, reply_buf, 4);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 4, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 4, ticks);
 
     recv_tid = Create(recv_pri, test_recv64);
     ticks = 0;
@@ -116,7 +114,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 64, reply_buf, 64);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 64, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 64, ticks);
 
 
     recv_tid = Create(recv_pri, test_recv256);
@@ -127,7 +125,7 @@ void time_attack(void) {
         Send(recv_tid, send_buf, 256, reply_buf, 256);
     }
     ticks = read_debug_timer();
-    print("%d tests (size %d), %d ticks\r\n", 10000, 256, ticks);
+    print("%d tests (size %d), %d ticks\n\r", 10000, 256, ticks);
 }
 
 void rps_tests()
@@ -280,6 +278,7 @@ void clock_client()
     char reply[2];
 
     Send(MyParentTid(), message, 0, reply, 2);
+    // Delay interval is now in reply[0] and number of delays is in reply[1]
 
     int cs_id = WhoIs("clock_server");
     int my_tid = MyTid();
@@ -288,11 +287,17 @@ void clock_client()
     {
         Delay(cs_id, reply[0]);
         print("Tid: %d, Delay Interval: %d, Delays completed: %d\n\r", my_tid, reply[0], i+1);
+        // print("Tid: %d, Delay Interval: %d, Delays completed: %d, Total delay: %d\n\r", my_tid, reply[0], i+1, (i+1)*reply[0]);
     } 
 }
 
 void clock_server_test()
 {
+    // Create clock and name servers
+    name_server_id = Create(0, name_server);
+    Create(0, clock_server);
+
+    // Create 4 clients with required priorties
     int c1 = Create(3, clock_client);
     int c2 = Create(4, clock_client);
     int c3 = Create(5, clock_client);
@@ -337,14 +342,36 @@ void byte_alignment_test()
     for(int i = 0; i != 32; i++) {print("%x", test[i]); print("\n\r");}
 }
 
+void clock_server_error_test()
+{
+    int cs = WhoIs("clock_server");
+
+    print("Should get \n\r-1, -1, TIME, -1, -1, -2, TIME, -1, -1, -2, TIME \n\r");
+
+    print("Should be: -1,   Got %d\n\r", Time(21));
+    print("Should be: -1,   Got %d\n\r", Time(-20));
+    Delay(cs, 5);
+    print("Should be: TIME, Got %d\n\r", Time(cs));
+    print("Should be: -1,   Got %d\n\r", Delay(21, 10));
+    print("Should be: -1,   Got %d\n\r", Delay(-21, 10));
+    print("Should be: -2,   Got %d\n\r", Delay(cs, -20));
+    print("Should be: TIME, Got %d\n\r", Delay(cs, 23));
+    print("Should be: -1,   Got %d\n\r", DelayUntil(21, 23));
+    print("Should be: -1,   Got %d\n\r", DelayUntil(-21, 10));
+    print("Should be: -2,   Got %d\n\r", DelayUntil(cs, -20));
+    print("Should be: TIME, Got %d\n\r", DelayUntil(cs, 23));
+}
+
 void umain(void)
 {
     
     // TODO Perhaps move to kernel and #define the id
-    name_server_id = Create(0, name_server);
-    Create(1, clock_server);
+    // name_server_id = Create(0, name_server);
+    // Create(0, clock_server);
 
-    Create(3, clock_server_test);
+    Create(3, clock_server_test); // FirstUserTask
+
+    // Create(3, clock_server_error_test);
 
     // Create(2, byte_alignment_test);
 
@@ -363,10 +390,10 @@ void umain(void)
     // int id = 0;
     // // 3 is lower priority than 1
     // id = Create(3, recv_task);
-    // print("Created: %d\r\n", id)
+    // print("Created: %d\n\r", id)
 
     // id = Create(3, send_task);
-    // print("Created: %d\r\n", id);
+    // print("Created: %d\n\r", id);
 
     // // Send(0xbadf00d, (char *)0xdeadbeef, 0x12345, (char *)0x67890, 0xabcdef);
     
