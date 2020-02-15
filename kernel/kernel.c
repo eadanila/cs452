@@ -170,8 +170,6 @@ void kinit(void) {
     bwsetfifo(COM1, OFF);
     bwtraininitialize(COM1);
 
-    bwprintf(COM1, "Test\n\r");
-
     print("\033[2J\033[2r");
     print("\033[s\033[HIDLE: 0%%\t\033[u");
     print("\n\r");
