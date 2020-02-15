@@ -2,16 +2,20 @@
 #define UART_SERVER_H
 
 #define INVALID_UART_SERVER -1
+#define OTHER_TASK_QUEUED -2
 
 int Getc(int tid, int channel);
 int Putc(int tid, int channel, char ch);
 
-void com1_getc_notifer(void);
-void com1_putc_worker(void);
+void uart1_getc_notifer(void);
+void uart1_putc_notifer(void);
 
-void com2_getc_notifer(void);
-void com2_getc_worker(void);
+void uart2_getc_notifer(void);
+void uart2_putc_notifer(void);
 
-void uart_server(void);
+void uart1_server(void);
+void uart2_server(void);
+
+void create_uart_servers(void); // Create a priority 0
 
 #endif
