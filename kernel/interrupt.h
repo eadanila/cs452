@@ -15,6 +15,15 @@
 #define INTERRUPT_TC2UI 5
 #define INTERRUPT_TC3UI 51
 
+#define INTERRUPT_UART1RXINTR1 23
+#define INTERRUPT_UART1TXINTR1 24
+#define INTERRUPT_UART1 52
+
+#define INTERRUPT_UART2RXINTR2 25
+#define INTERRUPT_UART2TXINTR2 26
+#define INTERRUPT_UART2 54
+
+
 // Require: 0 <= interrupt < 64
 //  Result: sets the corresponding bit in the VIC.
 // Note: explicitly checks that the specified interrupt is supported

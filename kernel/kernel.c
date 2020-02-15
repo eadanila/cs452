@@ -11,9 +11,11 @@
 #include "frame.h"
 
 #include "timer.h"
+#include "uart.h"
 
 #include "interrupt.h"
 #include "await.h"
+
 
 void unhandled_exception_handler(void);
 
@@ -164,6 +166,12 @@ void kinit(void) {
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
 
+    bwsetspeed(COM1, 2400);
+    bwsetfifo(COM1, OFF);
+    bwtraininitialize(COM1);
+
+    bwprintf(COM1, "Test\n\r");
+
     print("\033[2J\033[2r");
     print("\033[s\033[HIDLE: 0%%\t\033[u");
     print("\n\r");
@@ -193,6 +201,10 @@ void kinit(void) {
     set_timer_mode(TIMER_TC1, 1);
     set_timer_load_value(TIMER_TC1, 20);
     enable_timer(TIMER_TC1);
+
+    enable_interrupt(INTERRUPT_UART1RXINTR1);
+    enable_interrupt(INTERRUPT_UART1TXINTR1);
+    enable_interrupt(INTERRUPT_UART1);
 
     DEBUG("kint() finished");
 }
