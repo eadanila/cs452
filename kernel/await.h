@@ -9,10 +9,19 @@
 
 #include "constants.h"
 
-#define EVENT_MAX 3 // number of the largest event, update as more are added
 #define EVENT_TIMER1_INTERRUPT 0
 #define EVENT_TIMER2_INTERRUPT 1
 #define EVENT_TIMER3_INTERRUPT 2
+
+#define EVENT_UART1_RX_INTERRUPT 3
+#define EVENT_UART1_TX_INTERRUPT 4
+#define EVENT_UART1_CTS_LOW     5
+#define EVENT_UART1_CTS_HIGH    6
+
+#define EVENT_UART2_TX_INTERRUPT 7
+#define EVENT_UART2_RX_INTERRUPT 8
+
+#define EVENT_MAX 9 // number of the largest event, update as more are added
 
 // Require: this is called before anything else in await
 //  Result: the array of TIDs waiting on events is intialized

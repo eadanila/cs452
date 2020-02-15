@@ -150,10 +150,10 @@ void handle_swi(int caller)
             DEBUG("AWAIT, called by %d", caller);
 
             set_task_state(caller, TASK_AWAIT);
-            int valid = event_await((int)fp->r1, caller);
+            int result = event_await((int)fp->r1, caller);
 
-            if (valid == -1) {
-                fp->r0 = -1;
+            if (result != 0) {
+                fp->r0 = result;
                 set_task_state(caller, TASK_READY);
                 push_task(caller);
             }

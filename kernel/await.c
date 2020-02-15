@@ -3,8 +3,10 @@
 #include "task.h"
 #include "logging.h"
 #include "pqueue.h"
+#include "uart.h"
 
 int event_wait_tid[EVENT_MAX];
+volatile uint *event_interrupt_mask[EVENT_MAX];
 
 
 void init_event_wait_tid_list(void) {
@@ -29,6 +31,32 @@ int event_await(int eventid, uint tid) {
     
     if (eventid >= EVENT_MAX)
         return -1;
+
+    // check states and enable interrupts as needed
+    switch(eventid) {
+    case EVENT_UART1_RX_INTERRUPT:
+        enable_uart_rx_interrupt(UART1);
+        break;
+    case EVENT_UART1_TX_INTERRUPT:
+        enable_uart_tx_interrupt(UART1);
+        break;
+    case EVENT_UART1_CTS_LOW:
+        if (!(read_uart_flag(UART1, UART_CTS_FLAG)))
+            return 1;
+        enable_uart_combined_interrupt(UART1);
+        break;
+    case EVENT_UART1_CTS_HIGH:
+        if (read_uart_flag(UART1, UART_CTS_FLAG))
+            return 1;
+        enable_uart_combined_interrupt(UART1);
+        break;
+    case EVENT_UART2_RX_INTERRUPT:
+        enable_uart_rx_interrupt(UART2);
+        break;
+    case EVENT_UART2_TX_INTERRUPT:
+        enable_uart_tx_interrupt(UART2);
+        break;
+    }
 
     event_wait_tid[eventid] = tid;
 
