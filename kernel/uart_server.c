@@ -124,16 +124,6 @@ void uart1_putc_notifer(void)
     }
 }
 
-void uart2_getc_notifer(void)
-{
-
-}
-
-void uart2_putc_notifer(void)
-{
-
-}
-
 void uart1_server(void)
 {
     // Register on the name server
@@ -217,11 +207,11 @@ void uart1_server(void)
         }
         else if(get_ready)
         {
-            // Unblock notifer so it can start awaiting before 
-            // reading byte.
-            Reply(uart1_getc_notifer_tid, reply_msg, 0);
-
             add_byte(&get_buffer, uart_read_byte(UART1));
+
+            // Unblock notifer so it can start awaiting again
+            // TODO Should this actually occur before??
+            Reply(uart1_getc_notifer_tid, reply_msg, 0);
 
             get_ready = 0;
         }
@@ -236,9 +226,134 @@ void uart1_server(void)
     }
 }
 
+void uart2_getc_notifer(void)
+{
+    int s_id = WhoIs("com2");
+
+    for(;;)
+    {
+        char message[US_REQUEST_LENGTH];
+        char reply[US_REPLY_LENGTH];
+        message[0] = CHAR_RECEIVED;
+
+        AwaitEvent(EVENT_UART2_RX_INTERRUPT);
+        
+        // Notify server that a character was received
+        Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
+    }
+}
+
+void uart2_putc_notifer(void)
+{
+    int s_id = WhoIs("com2");
+
+    for(;;)
+    {
+        char message[US_REQUEST_LENGTH];
+        char reply[US_REPLY_LENGTH];
+        message[0] = PUT_READY;
+
+        // Get char to print
+        Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
+        
+        AwaitEvent(EVENT_UART2_TX_INTERRUPT);
+    }
+}
+
 void uart2_server(void)
 {
+    // Register on the name server
+    RegisterAs("com2");
 
+    // Notifiers and must be one priority level higher
+    int uart2_getc_notifer_tid  = Create(0, uart2_getc_notifer);
+    int uart2_putc_notifer_tid  = Create(0, uart2_putc_notifer);
+
+    RingBuffer put_buffer;
+    RingBuffer get_buffer;
+
+    // int unblocked_notifier = -1;
+    int queued_getc_task = -1;
+    int put_ready = 1;
+
+    init_buffer(&put_buffer);
+    init_buffer(&get_buffer);
+
+    int sender;
+    char msg[US_REQUEST_LENGTH];
+    char reply_msg[US_REPLY_LENGTH];
+
+    for(;;)
+    {
+        // Receive clock server request
+        Receive(&sender, msg, US_REQUEST_LENGTH);
+
+        // Execute the command encoded in the request
+        switch(msg[0])
+        {
+            case GET_CHAR:
+                if(get_buffer.size > 0) 
+                {
+                    reply_msg[0] = remove_byte(&get_buffer);
+                    Reply(sender, reply_msg, US_REPLY_LENGTH);
+                }
+                else if(queued_getc_task == -1)
+                {
+                    queued_getc_task = sender;
+                }
+                else 
+                {
+                    reply_msg[0] = OTHER_TASK_QUEUED;
+                    Reply(sender, reply_msg, US_REPLY_LENGTH);
+                }
+                break;
+
+            case PUT_CHAR:
+                add_byte(&put_buffer, msg[1]);
+                Reply(sender, reply_msg, US_REPLY_LENGTH);
+                break;
+
+            case CHAR_RECEIVED:
+                // Only allow authorized notifer to send this message
+                if( sender != uart2_getc_notifer_tid ) break;
+
+                add_byte(&get_buffer, uart_read_byte(UART2));
+
+                // Unblock notifer so it can start awaiting again
+                Reply(uart2_getc_notifer_tid, reply_msg, 0);
+                break;
+
+            case PUT_READY:
+                if( sender != uart2_putc_notifer_tid ) break;
+
+                put_ready = 1;
+                break;
+        }
+
+        // Choose if we are going to read or write next
+        // and only ever unblock one notifer at a time
+        // Currently just prioritize sending
+        // TODO Maybe only have one queue to maintain order of get and puts?
+        //      if not then maybe interleave gets and puts.
+        if(put_ready && put_buffer.size > 0)
+        {
+            char c = remove_byte(&put_buffer);
+            uart_send_byte(UART1, c);
+
+            // Unblock notifer
+            Reply(uart2_putc_notifer_tid, reply_msg, 0);
+
+            put_ready = 0;
+        }
+
+        if(queued_getc_task != -1 && get_buffer.size > 0)
+        {
+            reply_msg[0] = remove_byte(&get_buffer);
+            Reply(queued_getc_task, reply_msg, US_REPLY_LENGTH);
+
+            queued_getc_task = -1;
+        }
+    }
 }
 
 void create_uart_servers(void)
