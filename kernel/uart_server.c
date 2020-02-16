@@ -10,6 +10,7 @@
 #define PUT_CHAR 2
 #define CHAR_RECEIVED 3
 #define PUT_READY 4
+#define NOTIFIER_STARTUP 5
 
 // First byte is the channel, Second is the operation
 #define US_REQUEST_LENGTH 2
@@ -92,14 +93,17 @@ void uart1_getc_notifer(void)
 {
     int s_id = WhoIs("com1");
 
+    char message[US_REQUEST_LENGTH];
+    char reply[US_REPLY_LENGTH];
+    message[0] = NOTIFIER_STARTUP;
+
+    Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
+    message[0] = CHAR_RECEIVED;
+
     for(;;)
     {
-        char message[US_REQUEST_LENGTH];
-        char reply[US_REPLY_LENGTH];
-        message[0] = CHAR_RECEIVED;
-
         AwaitEvent(EVENT_UART1_RX_INTERRUPT);
-        
+
         // Notify server that a character was received
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
     }
@@ -109,12 +113,12 @@ void uart1_putc_notifer(void)
 {
     int s_id = WhoIs("com1");
 
+    char message[US_REQUEST_LENGTH];
+    char reply[US_REPLY_LENGTH];
+    message[0] = PUT_READY;
+
     for(;;)
     {
-        char message[US_REQUEST_LENGTH];
-        char reply[US_REPLY_LENGTH];
-        message[0] = PUT_READY;
-
         // Get char to print
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
 
@@ -130,6 +134,7 @@ void uart1_server(void)
     RegisterAs("com1");
 
     // Notifiers and must be one priority level higher
+    // Both notifiers start off initially blocked
     int uart1_getc_notifer_tid  =  Create(0, uart1_getc_notifer);
     int uart1_putc_notifer_tid  = Create(0, uart1_putc_notifer);
 
@@ -140,6 +145,8 @@ void uart1_server(void)
     int queued_getc_task = -1;
     int put_ready = 1;
     int get_ready = 0;
+
+    int receiving = 0;
 
     init_buffer(&put_buffer);
     init_buffer(&get_buffer);
@@ -188,6 +195,11 @@ void uart1_server(void)
                 if( sender != uart1_putc_notifer_tid ) break;
                 put_ready = 1;
                 break;
+
+            case NOTIFIER_STARTUP:
+                // Do nothing, this message was sent to make the 
+                // getc notifier initially blocked.
+                break;
         }
 
         // Choose if we are going to read or write next
@@ -197,21 +209,48 @@ void uart1_server(void)
         //      if not then maybe interleave gets and puts.
         if(put_ready && put_buffer.size > 0)
         {
-            // Unblock notifer so it can start awaiting on
-            // CTS low again before sending another byte.
-            Reply(uart1_putc_notifer_tid, reply_msg, 0);
             char c = remove_byte(&put_buffer);
-            uart_send_byte(UART1, c);
+
+            // If the character being put triggers a sensor dump,
+            // set receiving to the number of bytes expected
+            if(c >= MULTI_SENSOR_DUMP_OFFSET)
+            {
+                if(c >= SINGLE_SENSOR_DUMP_OFFSET)
+                    receiving = c - SINGLE_SENSOR_DUMP_OFFSET;
+                else
+                    receiving = c - MULTI_SENSOR_DUMP_OFFSET;
+
+                uart_send_byte(UART1, c);
+                // Unblock getc notifer
+                Reply(uart1_getc_notifer_tid, reply_msg, 0);
+            }
+            else
+            {
+                // Unblock notifer so it can start awaiting on
+                // CTS low again before sending another byte.
+                Reply(uart1_putc_notifer_tid, reply_msg, 0);
+                uart_send_byte(UART1, c);
+            }
 
             put_ready = 0;
         }
-        else if(get_ready)
+        else if(get_ready && receiving > 0)
         {
-            add_byte(&get_buffer, uart_read_byte(UART1));
+            receiving--;
+            assert(receiving > 0);
 
-            // Unblock notifer so it can start awaiting again
-            // TODO Should this actually occur before??
-            Reply(uart1_getc_notifer_tid, reply_msg, 0);
+            // If no more bytes are expected, wake putc notifer.
+            // Otherwise wake getc notifer again.
+            if(receiving == 0)
+            {
+                Reply(uart1_putc_notifer_tid, reply_msg, 0);
+                add_byte(&get_buffer, uart_read_byte(UART1));
+            }
+            else
+            {
+                add_byte(&get_buffer, uart_read_byte(UART1));
+                Reply(uart1_getc_notifer_tid, reply_msg, 0);
+            }
 
             get_ready = 0;
         }
