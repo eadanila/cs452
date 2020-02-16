@@ -90,7 +90,19 @@ int Putc(int tid, int channel, char ch)
 
 void uart1_getc_notifer(void)
 {
+    int s_id = WhoIs("com1");
 
+    for(;;)
+    {
+        char message[US_REQUEST_LENGTH];
+        char reply[US_REPLY_LENGTH];
+        message[0] = CHAR_RECEIVED;
+
+        AwaitEvent(EVENT_UART1_RX_INTERRUPT);
+        
+        // Notify server that a character was received
+        Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
+    }
 }
 
 void uart1_putc_notifer(void)
@@ -128,16 +140,16 @@ void uart1_server(void)
     RegisterAs("com1");
 
     // Notifiers and must be one priority level higher
-    /* int uart1_getc_notifer_tid  = */ Create(0, uart1_getc_notifer);
-     int uart1_putc_notifer_tid  = Create(0, uart1_putc_notifer);
-    /* int uart2_getc_notifer_tid  = */ Create(0, uart2_getc_notifer);
-    /* int uart2_putc_notifer_tid  = */ Create(0, uart2_putc_notifer);
+    int uart1_getc_notifer_tid  =  Create(0, uart1_getc_notifer);
+    int uart1_putc_notifer_tid  = Create(0, uart1_putc_notifer);
 
     RingBuffer put_buffer;
     RingBuffer get_buffer;
 
+    // int unblocked_notifier = -1;
     int queued_getc_task = -1;
     int put_ready = 1;
+    int get_ready = 0;
 
     init_buffer(&put_buffer);
     init_buffer(&get_buffer);
@@ -177,23 +189,49 @@ void uart1_server(void)
                 break;
 
             case CHAR_RECEIVED:
-                // Currently do nothing
+                // Only allow authorized notifer to send this message
+                if( sender != uart1_getc_notifer_tid ) break;
+                get_ready = 1;
                 break;
 
             case PUT_READY:
-                // TODO Create notifers in the server, and add asserts so 
-                // that other tasks cant send these commands
+                if( sender != uart1_putc_notifer_tid ) break;
                 put_ready = 1;
                 break;
         }
 
+        // Choose if we are going to read or write next
+        // and only ever unblock one notifer at a time
+        // Currently just prioritize sending
+        // TODO Maybe only have one queue to maintain order of get and puts?
+        //      if not then maybe interleave gets and puts.
         if(put_ready && put_buffer.size > 0)
         {
+            // Unblock notifer so it can start awaiting on
+            // CTS low again before sending another byte.
             Reply(uart1_putc_notifer_tid, reply_msg, 0);
             char c = remove_byte(&put_buffer);
             uart_send_byte(UART1, c);
 
             put_ready = 0;
+        }
+        else if(get_ready)
+        {
+            // Unblock notifer so it can start awaiting before 
+            // reading byte.
+            Reply(uart1_getc_notifer_tid, reply_msg, 0);
+
+            add_byte(&get_buffer, uart_read_byte(UART1));
+
+            get_ready = 0;
+        }
+
+        if(queued_getc_task != -1 && get_buffer.size > 0)
+        {
+            reply_msg[0] = remove_byte(&get_buffer);
+            Reply(queued_getc_task, reply_msg, US_REPLY_LENGTH);
+
+            queued_getc_task = -1;
         }
     }
 }
