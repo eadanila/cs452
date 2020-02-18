@@ -201,7 +201,7 @@ void process_command()
 	}
 	else if (is_command("rv", &command_p)) 
 	{
-		int t_number = parse_int(&command_p);
+		/*int t_number = */parse_int(&command_p);
 		if(command_p == 0) print_invalid_argument();
 	}
 	else if (is_command("sw", &command_p)) 
