@@ -170,9 +170,10 @@ void kinit(void) {
     bwsetfifo(COM1, OFF);
     bwtraininitialize(COM1);
 
-    print("\033[2J\033[2r");
-    print("\033[s\033[HIDLE: 0%%\t\033[u");
-    print("\n\r");
+    // TODO Find a way to make prints work with new interrupt mediated IO.
+    // print("\033[2J\033[2r");
+    // print("\033[s\033[HIDLE: 0%%\t\033[u");
+    // print("\n\r");
 
     // the ep93xx reference said to write these values here to enable
     // putting the processor in HALT
@@ -203,6 +204,10 @@ void kinit(void) {
     enable_interrupt(INTERRUPT_UART1RXINTR1);
     enable_interrupt(INTERRUPT_UART1TXINTR1);
     enable_interrupt(INTERRUPT_UART1);
+
+    enable_interrupt(INTERRUPT_UART2RXINTR2);
+    enable_interrupt(INTERRUPT_UART2TXINTR2);
+    enable_interrupt(INTERRUPT_UART2);
 
     DEBUG("kint() finished");
 }

@@ -10,6 +10,7 @@
 #include "frame.h"
 #include "interrupt.h"
 #include "idle.h"
+#include "idle_printer.h"
 
 #include "frame.h"
 
@@ -26,6 +27,7 @@ int main(int argc, char *argv[]) {
     
     int idle_task_id = kcreate(7, (uint)idle_task);
     DEBUG("Idle task ID: %d", idle_task_id);
+    kcreate(6, (uint)idle_printer);
     int id = kcreate(3, (uint)umain);
 
     start_time = 0;
