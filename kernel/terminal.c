@@ -87,6 +87,99 @@ void print_command()
 	}
 }
 
+// Increment *command if the command matches.
+int is_command(char* prefix, char** command)
+{
+	int prefix_len = _strlen(prefix);
+	int r = _strsim(prefix, *command) == prefix_len;
+	if(r) (*command) += prefix_len;
+	return r;
+}
+
+// Increment *command if the argument matches.
+int is_arg(char* arg, char** command)
+{
+	char* command_p = *command;
+
+	// Empty string provided, invalid argument
+	if(*command_p == 0) return 0;
+
+	// Skip whitespace before
+	while(*command_p && *command_p == ' ') command_p++;
+
+	// End of string, invalid argument
+	if(*command_p == 0) return 0;
+
+	if(is_command(arg, &command_p))
+	{
+		*command = command_p;
+		return 1;
+	}
+	
+	return 0;
+}
+
+// Increment *command if a valid int is parsed, set *command = 0 otherwise.
+// Return the parsed int.
+int parse_int(char** command)
+{
+	// Empty string provided, invalid int string
+	if(**command == 0)
+	{
+		*command = 0;
+		return 0;
+	}
+
+	// Skip whitespace before
+	while(**command && **command == ' ') (*command)++;
+	
+	// Store where int would start if the following is a valid int
+	char* command_int = *command;
+
+	// Check if the following non whitespace is a valid int
+	if(**command == '-') (*command)++;
+
+	// If string is only a "-", invalid int string
+	if(**command == 0 || **command == ' ')
+	{
+		*command = 0;
+		return 0;
+	}
+
+	while(**command && **command != ' ')
+	{
+		// non-digit encountered, invalid int string
+		if(**command > '9' || **command < '0') 
+		{
+			*command = 0;
+			return 0;
+		}
+		
+		(*command)++;
+	} 
+
+	// *command now stores one space after the end of the string.
+	return stoi(command_int);
+}
+
+void print_invalid_argument()
+{
+	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
+	Print(pid, "Invalid argument provided!\n\r");
+}
+
+void print_invalid_command()
+{
+	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
+	Print(pid, "Invalid command provided!\n\r");
+}
+
+void clear_invalid_message()
+{
+	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
+	Print(pid, "                                \n\r");
+}
+
 // TEMP Pulled from a0 and should be replaced.
 void process_command()
 {	
@@ -96,27 +189,34 @@ void process_command()
 	char* command_p = command;
 
 	if (command_len == 1) return;
-	if (_strsim("tr ", command) == 3) 
+	if (is_command("tr", &command_p)) 
 	{
-		// MoveCursor(pid, 0, 10);
-		// UPrint(pid, "COMMAND SENT");
+		int t_number = parse_int(&command_p);
+		int t_speed = parse_int(&command_p);
 
-		// TODO Error Check?
-		command_p += 3;
-		while(*command_p && *command_p == ' ') command_p++;
-		int t_number = stoi(command_p);
-		while(*command_p && *command_p != ' ') command_p++;
-		while(*command_p && *command_p == ' ') command_p++;
-		int t_speed = stoi(command_p);
+		if(command_p == 0) print_invalid_argument();
 
         Putc(com1_id, COM1, t_speed);
         Putc(com1_id, COM1, t_number);
 	}
-	if (_strsim("rv ", command) == 3) 
+	else if (is_command("rv", &command_p)) 
 	{
+		int t_number = parse_int(&command_p);
+		if(command_p == 0) print_invalid_argument();
 	}
-	if (_strsim("sw ", command) == 3) 
+	else if (is_command("sw", &command_p)) 
 	{
+		/*int s_number = */parse_int(&command_p);
+
+		if(command_p == 0) print_invalid_argument();
+
+		if(is_arg("C", &command_p)) {}
+		else if(is_arg("S", &command_p)) {}
+		else print_invalid_argument();
+	}
+	else
+	{
+		print_invalid_command();
 	}
 }
 
@@ -154,7 +254,7 @@ void terminal(void)
 
 	// Initial output setup
 	ClearScreen(pid);
-    MoveCursor(pid, 0, 0);
+    MoveCursor(pid, 0, 3);
 	Print(pid, "\033[?25l"); // Hide Cursor
 
     for(;;)
@@ -184,6 +284,7 @@ void terminal(void)
 					break;
 
 				case 13: // Return pressed
+					clear_invalid_message();
 					process_command();
 					command_clear();
 					break;
