@@ -3,6 +3,7 @@
 #include "syscall.h"
 #include "name_server.h"
 #include "logging.h"
+#include "string_utility.h"
 
 #define CS_REQUEST_LENGTH 5 // 1 char for operation type, 4 chars for int paramter
 #define REPLY_LENGTH 4 // 4 chars for int parameter
@@ -112,38 +113,6 @@ void remove_front(SortedList *l)
 int is_empty(SortedList *l)
 {
     return l->list == 0;
-}
-
-// Store an int into a 4 byte long char array
-void pack_int(int i, char* buffer)
-{
-    // int* b = (int*) buffer;
-    // *b = i;
-    
-    unsigned char* b = (unsigned char*) buffer;
-    for(int j = 3; j >= 0; j--)
-    {
-        b[j] = i & 0xff;
-        i = i >> 8;
-    }
-}
-
-// Extract an int from a 4 byte long char array create by pack_int
-int unpack_int(char* buffer)
-{
-    // int* b = (int*) buffer;
-    // return *b;
-
-    unsigned char* b = (unsigned char*) buffer;
-    int r = 0;
-    for(int i = 0; i != 3; i++)
-    {
-        r |= (unsigned int)b[i];
-        r = r << 8;
-    }
-    r |= (unsigned int)b[3];
-
-    return r;
 }
 
 int Time(int tid)

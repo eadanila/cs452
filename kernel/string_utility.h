@@ -48,4 +48,10 @@ int stoi(char* s);
 int format_string ( char* result, int size, char *fmt, ... );
 int _format_string ( char* result, int size, char *fmt, va_list va );
 
+// Store an int into a 4 byte long char array
+void pack_int(int i, char* buffer);
+
+// Extract an int from a 4 byte long char array create by pack_int
+int unpack_int(char* buffer);
+
 #endif
