@@ -7,6 +7,8 @@
 #include "syscall.h"
 #include "logging.h"
 #include "clock_server.h"
+#include "tc_server.h"
+#include "timer.h"
 
 #define COMMAND_PRINT_HEIGHT 24
 #define MAX_COMMAND_LEN 127
@@ -18,6 +20,11 @@ int last_command_len;
 
 int pid;
 int com1_id;
+int tcid;
+
+// TEMP 
+volatile int sensor_states[16];
+volatile int all_sensor_states[128];
 
 void TPrint(int tid, char* str, ... )
 {
@@ -196,8 +203,7 @@ void process_command()
 
 		if(command_p == 0) print_invalid_argument();
 
-        Putc(com1_id, COM1, t_speed);
-        Putc(com1_id, COM1, t_number);
+		SetSpeed(tcid, t_number, t_speed);
 	}
 	else if (is_command("rv", &command_p)) 
 	{
@@ -237,25 +243,96 @@ void input_notifier()
     }
 }
 
+void sensor_state_notifier()
+{
+	tcid = WhoIs("tc_server");
+	int tid = WhoIs("terminal");
+	int cid = WhoIs("clock_server");
+	while(cid < 0) cid = WhoIs("clock_server");
+
+	char sensor_dump[10];
+	char reply[1];
+
+	for(;;)
+	{
+		GetSensors(tcid, sensor_dump);
+
+		// Notify server that a sensor dump was completed
+        Send(tid, sensor_dump, 10, reply, 0);
+	}
+}
+
+// TEMP
+void add_sensor_to_queue(int sensor)
+{
+	for(int i = 15; i != 0; i--) sensor_states[i] = sensor_states[i-1];
+	sensor_states[0] =  sensor;
+}
+
+// TEMP
+// TODO Generalize to be used in TC1 and TC2
+int parse_sensor_states(char* sensor_bytes)
+{
+	int updated = 0;
+
+	for( int i = 0; i != 10; i+=2)
+	{
+		char byte1 = sensor_bytes[i];
+		char byte2 = sensor_bytes[i+1];
+		int data = byte1;
+		data = data << 8;
+		data += byte2;
+
+		int sensor_bank = i/2;
+
+		for(int i = 16; i != 0; i--)
+		{
+			int sensor = sensor_bank * 16 + i;
+			if(data & 1) 
+			{
+				if(!all_sensor_states[sensor])
+				{
+					updated = 1;
+					add_sensor_to_queue(sensor_bank * 16 + (i-1)); 
+					all_sensor_states[sensor] = 1;
+				}
+			}
+			else
+			{
+				all_sensor_states[sensor] = 0;
+			}
+			data = data >> 1;
+		}
+	}
+
+	return updated;
+}
+
 void terminal(void)
 {
 	pid = WhoIs("com2");
 	com1_id = WhoIs("com1");
+	// int csid = WhoIs("clock_server");
 
 	RegisterAs("terminal");
 	int sender;
-
-	int input_notifier_id = Create(3, input_notifier);
-
-    command_len = 0;
-    last_command_len = 0;
-    command[0] = 0;
-	char msg[MAX_TPRINT_SIZE];
 
 	// Initial output setup
 	ClearScreen(pid);
     MoveCursor(pid, 0, 3);
 	Print(pid, "\033[?25l"); // Hide Cursor
+
+	// Initialize variables for displaying
+	for(int i = 0; i != 16; i++) sensor_states[i] = -1;
+	for(int i = 0; i != 128; i++) all_sensor_states[i] = 0;
+
+	int input_notifier_id = Create(3, input_notifier);
+	int sensor_state_notifier_id = Create(3, sensor_state_notifier);
+
+    command_len = 0;
+    last_command_len = 0;
+    command[0] = 0;
+	char msg[MAX_TPRINT_SIZE];
 
     for(;;)
     {
@@ -300,6 +377,36 @@ void terminal(void)
 
 			// Load saved cursor
 			Print(pid, "\033[u");
+		}
+		else if(sender == sensor_state_notifier_id)
+		{
+			MoveCursor(pid, 0,20);
+
+			// If sensor states have been updated, reprint the sensor state queue
+			if(parse_sensor_states(msg))
+			{
+				MoveCursor(pid, 1, 8);
+				Print(pid, "LAST 16 SENSOR HITS: ");
+				MoveCursor(pid, 22, 8);
+				char sensor[32];
+
+				for(int i = 0; i != 16; i++)
+				{
+					if(sensor_states[i] == -1) break;
+					itos(sensor_states[i], sensor);
+
+					char sensor_str[4];
+					sensor_str[3] = 0;
+					char* number_part =sensor_str + 1;
+
+					sensor_str[0] = 'A' + sensor_states[i]/16;
+					itos(sensor_states[i]%16+1, number_part);
+
+					Print(pid, sensor_str);
+					Putc(pid, COM2, ' ');
+				}
+			}
+
 		}
 		else // Task requested to print to terminal
 		{

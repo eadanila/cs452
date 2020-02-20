@@ -23,6 +23,7 @@ void init_sorted_list(SortedList* l)
 
     l->free = &l->nodes[0];
     l->list = 0;
+    l->size = 0;
 }
 
 // Add a tid associated with a time to a SortedList structure.
@@ -42,6 +43,7 @@ int add_item(SortedList* l, int tid, int time)
 
         l->list->tid = tid;
         l->list->time = time;
+        l->size++;
 
         return 0;
     }
@@ -59,6 +61,7 @@ int add_item(SortedList* l, int tid, int time)
 
         new_node->tid = tid;
         new_node->time = time;
+        l->size++;
 
         return 0;
     }
@@ -80,6 +83,7 @@ int add_item(SortedList* l, int tid, int time)
 
     new_node->tid = tid;
     new_node->time = time;
+    l->size++;
 
     return 0;
 }
@@ -108,6 +112,7 @@ void remove_front(SortedList *l)
     l->free = l->list;
     l->list = l->list->next;
     l->free->next = next_free;
+    l->size--;
 }
 
 int is_empty(SortedList *l)
@@ -262,12 +267,13 @@ void clock_server(void)
 
         // Unblock all tasks whos time that they're expected to delay until has passed.
         // Remove them from the waiting list once they are unblocked.
-        while(!is_empty(&waiting) && peek_front_time(&waiting) <= ticks_elapsed)
+        while(!is_empty(&waiting) && (peek_front_time(&waiting) <= ticks_elapsed))
         {
+            int tid = peek_front_tid(&waiting);
             pack_int(ticks_elapsed, reply_msg);
-            Reply(peek_front_tid(&waiting), reply_msg, REPLY_LENGTH);
-            
+
             remove_front(&waiting);
+            Reply(tid, reply_msg, REPLY_LENGTH);
         }
     }
 }

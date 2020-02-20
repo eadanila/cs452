@@ -13,6 +13,7 @@
 #include "uart_server.h"
 #include "print.h"
 #include "terminal.h"
+#include "tc_server.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -382,6 +383,8 @@ void umain(void)
     Create(0, clock_server);
 
     create_uart_servers();
+
+    Create(2, tc_server);
 
     Create(4, terminal);
     

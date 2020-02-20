@@ -101,7 +101,7 @@ void uart1_getc_notifer(void)
 
     for(;;)
     {
-        AwaitEvent(EVENT_UART1_RX_INTERRUPT);
+        message[1] = AwaitEvent(EVENT_UART1_RX_INTERRUPT);
 
         // Notify server that a character was received
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
@@ -118,9 +118,7 @@ void uart1_putc_notifer(void)
 
     for(;;)
     {
-        // Get char to print
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
-
         AwaitEvent(EVENT_UART1_CTS_LOW);
         AwaitEvent(EVENT_UART1_CTS_HIGH);
         AwaitEvent(EVENT_UART1_TX_INTERRUPT);
@@ -140,10 +138,8 @@ void uart1_server(void)
     RingBuffer put_buffer;
     RingBuffer get_buffer;
 
-    // int unblocked_notifier = -1;
     int queued_getc_task = -1;
     int put_ready = 1;
-    int get_ready = 0;
 
     int receiving = 0;
 
@@ -163,6 +159,7 @@ void uart1_server(void)
         switch(msg[0])
         {
             case GET_CHAR:
+                // print("GET_CALLED");
                 if(get_buffer.size > 0) 
                 {
                     reply_msg[0] = remove_byte(&get_buffer);
@@ -180,17 +177,40 @@ void uart1_server(void)
                 break;
 
             case PUT_CHAR:
+                // print("PUT_CALLED");
                 add_byte(&put_buffer, msg[1]);
                 Reply(sender, reply_msg, US_REPLY_LENGTH);
                 break;
 
             case CHAR_RECEIVED:
+                // print("CHAR_RECEIVED ");
                 // Only allow authorized notifer to send this message
                 if( sender != uart1_getc_notifer_tid ) break;
-                get_ready = 1;
+
+                char read_byte = msg[1];
+
+                receiving--;
+                assert(receiving >= 0);
+
+                // If no more bytes are expected, wake putc notifer.
+                // Otherwise wake getc notifer again.
+                if(receiving == 0)
+                {
+                    add_byte(&get_buffer, read_byte);
+                    // We assume that after our last byte has been received, we are 
+                    // immediately ready to transmit since UART1 is half-duplex.
+                    put_ready = 1;
+                }
+                else
+                {
+                    add_byte(&get_buffer, read_byte);
+                    Reply(uart1_getc_notifer_tid, reply_msg, 0);
+                }
+
                 break;
 
             case PUT_READY:
+                // print("PUT_READY");
                 if( sender != uart1_putc_notifer_tid ) break;
                 put_ready = 1;
                 break;
@@ -206,7 +226,7 @@ void uart1_server(void)
         // Currently just prioritize sending
         // TODO Maybe only have one queue to maintain order of get and puts?
         //      if not then maybe interleave gets and puts.
-        if(put_ready && put_buffer.size > 0)
+        if(put_ready && put_buffer.size > 0 && receiving == 0)
         {
             char c = remove_byte(&put_buffer);
 
@@ -219,9 +239,11 @@ void uart1_server(void)
                 else
                     receiving = c - MULTI_SENSOR_DUMP_OFFSET;
 
-                uart_send_byte(UART1, c);
-                // Unblock getc notifer
+                receiving *= 2;
+
                 Reply(uart1_getc_notifer_tid, reply_msg, 0);
+                // Reply(uart1_putc_notifer_tid, reply_msg, 0);
+                uart_send_byte(UART1, c);
             }
             else
             {
@@ -233,26 +255,6 @@ void uart1_server(void)
 
             put_ready = 0;
         }
-        else if(get_ready && receiving > 0)
-        {
-            receiving--;
-            assert(receiving > 0);
-
-            // If no more bytes are expected, wake putc notifer.
-            // Otherwise wake getc notifer again.
-            if(receiving == 0)
-            {
-                Reply(uart1_putc_notifer_tid, reply_msg, 0);
-                add_byte(&get_buffer, uart_read_byte(UART1));
-            }
-            else
-            {
-                add_byte(&get_buffer, uart_read_byte(UART1));
-                Reply(uart1_getc_notifer_tid, reply_msg, 0);
-            }
-
-            get_ready = 0;
-        }
 
         if(queued_getc_task != -1 && get_buffer.size > 0)
         {
@@ -263,6 +265,125 @@ void uart1_server(void)
         }
     }
 }
+
+// void uart1_getc_noqueue_notifer(void)
+// {
+//     int s_id = WhoIs("com1");
+
+//     char message[US_REQUEST_LENGTH];
+//     char reply[US_REPLY_LENGTH];
+//     message[0] = CHAR_RECEIVED;
+
+//     for(;;)
+//     {
+//         message[1] = AwaitEvent(EVENT_UART1_RX_INTERRUPT);
+
+//         // Notify server that a character was received
+//         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
+//     }
+// }
+
+// Version that doesn't use queues and thus blocks tasks.
+// void uart1_noqueue_server(void)
+// {
+//     // Register on the name server
+//     RegisterAs("com1");
+
+//     // Notifiers and must be one priority level higher
+//     // Both notifiers start off initially blocked
+//     int uart1_getc_notifer_tid = Create(0, uart1_getc_noqueue_notifer);
+//     int uart1_putc_notifer_tid = Create(0, uart1_putc_notifer);
+
+//     int sender;
+//     char msg[US_REQUEST_LENGTH];
+//     char reply_msg[US_REPLY_LENGTH];
+
+//     RingBuffer put_buffer;
+
+//     int queued_getc_task = -1;
+//     int put_ready = 1;
+//     int get_ready = 0;
+
+//     init_buffer(&put_buffer);
+
+//     for(;;)
+//     {
+//         // Receive clock server request
+//         Receive(&sender, msg, US_REQUEST_LENGTH);
+
+//         // Execute the command encoded in the request
+//         switch(msg[0])
+//         {
+//             case GET_CHAR:
+//                 // print("GET_CALLED");
+//                 if(queued_getc_task == -1)
+//                 {
+//                     queued_getc_task = sender;
+//                 }
+//                 else 
+//                 {
+//                     reply_msg[0] = OTHER_TASK_QUEUED;
+//                     Reply(sender, reply_msg, US_REPLY_LENGTH);
+//                 }
+//                 break;
+
+//             case PUT_CHAR:
+//                 // print("PUT_CALLED");
+//                 add_byte(&put_buffer, msg[1]);
+//                 Reply(sender, reply_msg, US_REPLY_LENGTH);
+//                 break;
+
+//             case CHAR_RECEIVED:
+//                 // print("CHAR_RECEIVED ");
+//                 // Only allow authorized notifer to send this message
+//                 if( sender != uart1_getc_notifer_tid ) break;
+//                 // get_ready = 1;
+//                 // put_ready = 0;
+
+                
+
+//                 // print("CHAR_RECEIVED ");
+//                 break;
+
+//             case PUT_READY:
+//                 // print("PUT_READY");
+//                 if( sender != uart1_putc_notifer_tid ) break;
+//                 put_ready = 1;
+//                 get_ready = 0;
+//                 // print("PUT_READY ");
+//                 break;
+//         }
+//         // print("PUTBUFFER SIZE %d ", put_buffer.size);
+
+
+        
+//         if(get_ready && queued_getc_task != 1)
+//         {
+//             reply_msg[0] = uart_read_byte(UART1);
+//             Reply(uart1_getc_notifer_tid, reply_msg, 0);
+
+//             Reply(queued_getc_task, reply_msg, US_REPLY_LENGTH);
+
+//             queued_getc_task = -1;
+//             get_ready = 0;
+//             put_ready = 1;
+//         }
+        
+//         if(put_ready && put_buffer.size > 0)
+//         {
+//             char c = remove_byte(&put_buffer);
+
+            
+//             // Unblock notifer so it can start awaiting on
+//             // CTS low again before sending another byte.
+//             Reply(uart1_putc_notifer_tid, reply_msg, 0);
+//             uart_send_byte(UART1, c);
+            
+//             put_ready = 0;
+//             get_ready = 0;
+//         }
+//     }
+// }
 
 void uart2_getc_notifer(void)
 {
@@ -396,6 +517,7 @@ void uart2_server(void)
 
 void create_uart_servers(void)
 {
+    // Create(1, uart1_noqueue_server);
     Create(1, uart1_server);
     Create(1, uart2_server);
 }
