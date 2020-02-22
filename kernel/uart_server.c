@@ -5,15 +5,17 @@
 #include "name_server.h"
 #include "uart.h"
 #include "await.h"
+#include "string_utility.h"
 
 #define GET_CHAR 1
 #define PUT_CHAR 2
-#define CHAR_RECEIVED 3
-#define PUT_READY 4
-#define NOTIFIER_STARTUP 5
+#define PUT_COMMAND 3
+#define CHAR_RECEIVED 4
+#define PUT_READY 5
+#define NOTIFIER_STARTUP 6
 
 // First byte is the channel, Second is the operation
-#define US_REQUEST_LENGTH 2
+#define US_REQUEST_LENGTH 3
 #define US_REPLY_LENGTH 1
 
 #define BUFFER_SIZE 10240
@@ -58,13 +60,13 @@ int Getc(int tid, int channel)
     // Currently channel is ignored
     // assert(channel == COM1 || channel == COM2);
 
-    char message[US_REQUEST_LENGTH];
+    char message[1];
     char reply[US_REPLY_LENGTH];
 
     message[0] = GET_CHAR;
 
     // if tid is not the task id of an existing task.
-    if(Send(tid, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH) == -1) 
+    if(Send(tid, message, 1, reply, US_REPLY_LENGTH) == -1) 
         return INVALID_UART_SERVER;
 
     return reply[0];
@@ -75,14 +77,33 @@ int Putc(int tid, int channel, char ch)
     // Currently channel is ignored
     // assert(channel == COM1 || channel == COM2);
 
-    char message[US_REQUEST_LENGTH];
+    char message[2];
     char reply[US_REPLY_LENGTH];
 
     message[0] = PUT_CHAR;
     message[1] = ch;
 
     // if tid is not the task id of an existing task.
-    if(Send(tid, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH) == -1) 
+    if(Send(tid, message, 2, reply, US_REPLY_LENGTH) == -1) 
+        return INVALID_UART_SERVER;
+
+    return 0;
+}
+
+int PutCommand(int tid, int channel, char ch1, char ch2)
+{
+    // Currently channel is ignored
+    // assert(channel == COM1 || channel == COM2);
+
+    char message[3];
+    char reply[US_REPLY_LENGTH];
+
+    message[0] = PUT_COMMAND;
+    message[1] = ch1;
+    message[2] = ch2;
+
+    // if tid is not the task id of an existing task.
+    if(Send(tid, message, 3, reply, US_REPLY_LENGTH) == -1) 
         return INVALID_UART_SERVER;
 
     return 0;
@@ -160,6 +181,7 @@ void uart1_server(void)
         {
             case GET_CHAR:
                 // print("GET_CALLED");
+                
                 if(get_buffer.size > 0) 
                 {
                     reply_msg[0] = remove_byte(&get_buffer);
@@ -177,8 +199,15 @@ void uart1_server(void)
                 break;
 
             case PUT_CHAR:
-                // print("PUT_CALLED");
+                // print("PUT_CALLED ");
                 add_byte(&put_buffer, msg[1]);
+                Reply(sender, reply_msg, US_REPLY_LENGTH);
+                break;
+
+            case PUT_COMMAND:
+                // print("PUT_COMMAND_CALLED ");
+                add_byte(&put_buffer, msg[1]);
+                add_byte(&put_buffer, msg[2]);
                 Reply(sender, reply_msg, US_REPLY_LENGTH);
                 break;
 
@@ -210,14 +239,19 @@ void uart1_server(void)
                 break;
 
             case PUT_READY:
-                // print("PUT_READY");
+                // print("PUT_READY ");
                 if( sender != uart1_putc_notifer_tid ) break;
                 put_ready = 1;
                 break;
 
             case NOTIFIER_STARTUP:
+                // print("NOTIFIER_STARTUP ");
                 // Do nothing, this message was sent to make the 
                 // getc notifier initially blocked.
+                break;
+
+            default:
+                assert(0);
                 break;
         }
 
@@ -470,6 +504,11 @@ void uart2_server(void)
             case PUT_CHAR:
                 add_byte(&put_buffer, msg[1]);
                 Reply(sender, reply_msg, US_REPLY_LENGTH);
+                break;
+
+            case PUT_COMMAND:
+                // Currently not supported.
+                assert(0);
                 break;
 
             case CHAR_RECEIVED:

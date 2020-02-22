@@ -1,8 +1,8 @@
 #ifndef TC_SERVER_H
 #define TC_SERVER_H
 
-#define STRAIGHT 'S'
-#define CURVED 'C'
+#define STRAIGHT 33
+#define CURVED 34
 
 #define INVALID_TC_SERVER -1
 #define INVALID_ARGUMENT -2

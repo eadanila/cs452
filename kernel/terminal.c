@@ -207,17 +207,19 @@ void process_command()
 	}
 	else if (is_command("rv", &command_p)) 
 	{
-		/*int t_number = */parse_int(&command_p);
+		int t_number = parse_int(&command_p);
 		if(command_p == 0) print_invalid_argument();
+
+		Reverse(tcid, t_number);
 	}
 	else if (is_command("sw", &command_p)) 
 	{
-		/*int s_number = */parse_int(&command_p);
+		int s_number = parse_int(&command_p);
 
 		if(command_p == 0) print_invalid_argument();
 
-		if(is_arg("C", &command_p)) {}
-		else if(is_arg("S", &command_p)) {}
+		if(is_arg("C", &command_p)) SwitchTrack(tcid, s_number, CURVED);
+		else if(is_arg("S", &command_p)) SwitchTrack(tcid, s_number, STRAIGHT);
 		else print_invalid_argument();
 	}
 	else
@@ -308,6 +310,25 @@ int parse_sensor_states(char* sensor_bytes)
 	return updated;
 }
 
+// For a debugging spinner print
+void terminal_tick_notifier()
+{
+    int tcid = WhoIs("terminal");
+    int csid = WhoIs("clock_server");
+
+    char message[4];
+    char reply[1];
+
+    for(;;)
+    {
+        int time = Delay(csid, 25);
+        pack_int(time, message + 1);
+
+        // Notify server that time has changed
+        Send(tcid, message, 4, reply, 0);
+    }
+}
+
 void terminal(void)
 {
 	pid = WhoIs("com2");
@@ -328,6 +349,10 @@ void terminal(void)
 
 	int input_notifier_id = Create(3, input_notifier);
 	int sensor_state_notifier_id = Create(3, sensor_state_notifier);
+	int terminal_tick_notifer_id = Create(3, terminal_tick_notifier);
+
+	char spinner[] = {'-', '\\', '|', '/', '-','\\', '|', '/'};
+	int spinner_state = 0;
 
     command_len = 0;
     last_command_len = 0;
@@ -407,6 +432,19 @@ void terminal(void)
 				}
 			}
 
+		}
+		else if (sender == terminal_tick_notifer_id)
+		{
+			// Save where cursor was
+			Print(pid, "\033[s");
+
+			MoveCursor(pid, 0, 3);
+			Putc(pid, COM2, spinner[spinner_state]);
+
+			// Load saved cursor
+			Print(pid, "\033[u");
+			spinner_state++;
+			spinner_state %= 8;
 		}
 		else // Task requested to print to terminal
 		{

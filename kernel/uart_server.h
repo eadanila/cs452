@@ -10,6 +10,9 @@
 int Getc(int tid, int channel);
 int Putc(int tid, int channel, char ch);
 
+// Currently only supported for COM1 and for str of size two
+int PutCommand(int tid, int channel, char ch1, char ch2);
+
 void uart1_getc_notifer(void);
 void uart1_putc_notifer(void);
 
