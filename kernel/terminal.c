@@ -348,7 +348,7 @@ void terminal(void)
 	for(int i = 0; i != 128; i++) all_sensor_states[i] = 0;
 
 	int input_notifier_id = Create(3, input_notifier);
-	int sensor_state_notifier_id = Create(3, sensor_state_notifier);
+	int sensor_state_notifier_id = -21;//Create(3, sensor_state_notifier);
 	int terminal_tick_notifer_id = Create(3, terminal_tick_notifier);
 
 	char spinner[] = {'-', '\\', '|', '/', '-','\\', '|', '/'};

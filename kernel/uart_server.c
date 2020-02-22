@@ -182,6 +182,8 @@ void uart1_server(void)
             case GET_CHAR:
                 // print("GET_CALLED");
                 
+                
+
                 if(get_buffer.size > 0) 
                 {
                     reply_msg[0] = remove_byte(&get_buffer);
