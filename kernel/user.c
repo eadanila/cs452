@@ -11,6 +11,8 @@
 #include "await.h"
 #include "uart.h"
 #include "uart_server.h"
+#include "print.h"
+#include "terminal.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -381,8 +383,7 @@ void umain(void)
 
     create_uart_servers();
 
-    Putc(WhoIs("com1"), NOARG, 0);
-    Putc(WhoIs("com1"), NOARG, 24);
+    Create(4, terminal);
     
     // TODO Perhaps move to kernel and #define the id
     // name_server_id = Create(0, name_server);
@@ -420,6 +421,6 @@ void umain(void)
     //     AwaitEvent(EVENT_TIMER1_INTERRUPT);
     // }
 
-    print("umain: exiting\n\r");
+    // print("umain: exiting\n\r");
     // print("FirstUserTask: exiting\n\r");
 }
