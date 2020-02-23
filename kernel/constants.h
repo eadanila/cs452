@@ -28,6 +28,8 @@ typedef unsigned int uint;
 #define OUT_OF_TASK_DESCRIPTORS -2
 #define INVALID_PRIORITY -1
 
+#define NULL 0
+#define NOARG 0
 
 #endif
 
