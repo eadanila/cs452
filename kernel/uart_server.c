@@ -16,8 +16,7 @@
 #define US_REQUEST_LENGTH 2
 #define US_REPLY_LENGTH 1
 
-
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 10240
 
 typedef struct ring_buffer RingBuffer;
 
@@ -377,7 +376,7 @@ void uart2_server(void)
         if(put_ready && put_buffer.size > 0)
         {
             char c = remove_byte(&put_buffer);
-            uart_send_byte(UART1, c);
+            uart_send_byte(UART2, c);
 
             // Unblock notifer
             Reply(uart2_putc_notifer_tid, reply_msg, 0);
@@ -398,5 +397,5 @@ void uart2_server(void)
 void create_uart_servers(void)
 {
     Create(1, uart1_server);
-    Create(1, uart1_server);
+    Create(1, uart2_server);
 }
