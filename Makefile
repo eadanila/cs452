@@ -1,4 +1,4 @@
-ASSIGNMENT = k3.elf
+ASSIGNMENT = k4.elf
 BINARY = kernel.elf
 SRCDIR = ./kernel
 BUILDDIR = ./build

@@ -8,6 +8,12 @@
 #include "rps_server.h"
 #include "rps_client.h"
 #include "clock_server.h"
+#include "await.h"
+#include "uart.h"
+#include "uart_server.h"
+#include "print.h"
+#include "terminal.h"
+#include "tc_server.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -364,12 +370,26 @@ void clock_server_error_test()
 
 void umain(void)
 {
+    name_server_id = Create(0, name_server);
+    Create(0, clock_server);
+    create_uart_servers();
+    Create(2, tc_server);
+    Create(4, terminal);
+
+    // uart_send_byte(UART1, 16);
+    // AwaitEvent(EVENT_UART1_CTS_LOW);
+    // AwaitEvent(EVENT_UART1_CTS_HIGH);
+    // AwaitEvent(EVENT_UART1_TX_INTERRUPT);
+    // uart_send_byte(UART1, 24);
+    // AwaitEvent(EVENT_UART1_CTS_LOW);
+    // AwaitEvent(EVENT_UART1_CTS_HIGH);
+    // AwaitEvent(EVENT_UART1_TX_INTERRUPT);
     
     // TODO Perhaps move to kernel and #define the id
     // name_server_id = Create(0, name_server);
     // Create(0, clock_server);
 
-    Create(3, clock_server_test); // FirstUserTask
+    // Create(3, clock_server_test);
 
     // Create(3, clock_server_error_test);
 
@@ -401,6 +421,6 @@ void umain(void)
     //     AwaitEvent(EVENT_TIMER1_INTERRUPT);
     // }
 
-    print("umain: exiting\n\r");
+    // print("umain: exiting\n\r");
     // print("FirstUserTask: exiting\n\r");
 }

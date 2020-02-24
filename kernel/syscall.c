@@ -27,7 +27,7 @@ void print_regs(Frame *fp) {
 // User calls syscall then:
 // syscall (C) -> software_interupt (ARM) -> enter_kernel (ARM) -> handle_swi (C)
 
-void handle_swi(int caller)
+int handle_swi(int caller)
 {
     DEBUG("handle_swi called");
     assert(is_valid_task(caller));
@@ -150,19 +150,26 @@ void handle_swi(int caller)
             DEBUG("AWAIT, called by %d", caller);
 
             set_task_state(caller, TASK_AWAIT);
-            int valid = event_await((int)fp->r1, caller);
+            int result = event_await((int)fp->r1, caller);
 
-            if (valid == -1) {
-                fp->r0 = -1;
+            if (result != 0) {
+                fp->r0 = result;
                 set_task_state(caller, TASK_READY);
                 push_task(caller);
             }
-
+            break;
+        case SYSCALL_SHUTDOWN:
+            DEBUG("SHUTDOWN, called by %d", caller);
+            // TODO Probably a safer way to do this...
+            //      Perhaps link this to idle task to ensure it only happens at idle?
+            return 1;
             break;
         default:
             FATAL("What is this, a syscall for ants? %d? Called by %d", syscall_id, caller);
             break;
     }
+
+    return 0;
 }
 
 int Create(int priority, void(*function)()) {
@@ -201,6 +208,10 @@ int Reply(int tid, const char *reply, int rplen) {
 
 int AwaitEvent(int eventid) {
     return syscall(SYSCALL_AWAIT, (int)eventid, 0, 0, 0, 0);
+}
+
+void Shutdown(void) {
+    syscall(SYSCALL_SHUTDOWN, 0, 0, 0, 0, 0);
 }
 
 void exit_handler() {

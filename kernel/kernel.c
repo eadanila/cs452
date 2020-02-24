@@ -11,9 +11,11 @@
 #include "frame.h"
 
 #include "timer.h"
+#include "uart.h"
 
 #include "interrupt.h"
 #include "await.h"
+
 
 void unhandled_exception_handler(void);
 
@@ -153,6 +155,17 @@ void kcleanup(void) {
     disable_interrupt(INTERRUPT_TC3UI);
     disable_timer(TIMER_TC1);
     clear_timer(TIMER_TC1);
+
+    disable_interrupt(INTERRUPT_UART1RXINTR1);
+    disable_interrupt(INTERRUPT_UART1TXINTR1);
+    disable_interrupt(INTERRUPT_UART1);
+    disable_interrupt(INTERRUPT_UART2RXINTR2);
+    disable_interrupt(INTERRUPT_UART2TXINTR2);
+    // disable_interrupt(INTERRUPT_UART2);
+
+    // Clear RX interupts by reading bytes
+    uart_read_byte(UART1);
+    uart_read_byte(UART2);
 }
 
 
@@ -164,9 +177,14 @@ void kinit(void) {
     bwsetspeed(COM2, 115200);
     bwsetfifo(COM2, OFF);
 
-    print("\033[2J\033[2r");
-    print("\033[s\033[HIDLE: 0%%\t\033[u");
-    print("\n\r");
+    bwsetspeed(COM1, 2400);
+    bwsetfifo(COM1, OFF);
+    bwtraininitialize(COM1);
+
+    // TODO Find a way to make prints work with new interrupt mediated IO.
+    // print("\033[2J\033[2r");
+    // print("\033[s\033[HIDLE: 0%%\t\033[u");
+    // print("\n\r");
 
     // the ep93xx reference said to write these values here to enable
     // putting the processor in HALT
@@ -190,9 +208,18 @@ void kinit(void) {
 
     enable_interrupt(INTERRUPT_TC1UI);
 
+    set_timer_clock(TIMER_TC1, 1); // 508.4KHz
     set_timer_mode(TIMER_TC1, 1);
-    set_timer_load_value(TIMER_TC1, 20);
+    set_timer_load_value(TIMER_TC1, 5084); // 10ms @ 508.4KHz => 5084 clock cycles
     enable_timer(TIMER_TC1);
+
+    enable_interrupt(INTERRUPT_UART1RXINTR1);
+    enable_interrupt(INTERRUPT_UART1TXINTR1);
+    enable_interrupt(INTERRUPT_UART1);
+
+    enable_interrupt(INTERRUPT_UART2RXINTR2);
+    enable_interrupt(INTERRUPT_UART2TXINTR2);
+    // enable_interrupt(INTERRUPT_UART2);
 
     DEBUG("kint() finished");
 }

@@ -24,6 +24,8 @@ struct sorted_list
 
     ListNode *free;
     ListNode *list;
+
+    int size;
 };
 
 int Time(int tid);
