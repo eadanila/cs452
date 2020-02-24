@@ -7,17 +7,48 @@
 #include "syscall.h"
 #include "logging.h"
 #include "clock_server.h"
+#include "tc_server.h"
+#include "timer.h"
 
 #define COMMAND_PRINT_HEIGHT 24
+#define SWITCH_PRINT_HEIGHT 9
+#define SENSOR_PRINT_HEIGHT 7
+#define TIME_PRINT_HEIGHT 5
+#define INITIALIZATION_PRINT_HEIGHT 3
+#define SPINNER_PRINT_HEIGHT 3
+
 #define MAX_COMMAND_LEN 127
 #define MAX_TPRINT_SIZE 1024
 
+#define TERMINAL_TICK_NOTIFIER_DELAY 5
+
+// The following variables are used by functions only called by the terminal task.
+// Although "global", these variables are accessed by no other task
+// than the terminal task and thus do not violate memory exclusivity.
+// These exist to avoid constantly passing large amounts
+// of variables to functions only called by the terminal task.
 char command[MAX_COMMAND_LEN + 1];
 int command_len;
 int last_command_len;
 
 int pid;
 int com1_id;
+int tcid;
+
+int track_initialized;
+
+// TEMP 
+// Variables used to hold senor states, and a queue of the last 16
+// triggered sensors. Declared volatile to avoid the compiler using undefined 
+// functions to optimize operations done on them.
+volatile int sensor_states[16];
+volatile int all_sensor_states[128];
+
+// Variables used to store switches triggered and changed. 
+// In the future this responsibility may move the tc_server.
+int switches[SWITCH_COUNT];
+char switch_states[256];
+int switch_updated;
 
 void TPrint(int tid, char* str, ... )
 {
@@ -87,7 +118,8 @@ void print_command()
 	}
 }
 
-// Increment *command if the command matches.
+// Increment *command past prefix if it matches.
+// Returns if the command contained the prefix.
 int is_command(char* prefix, char** command)
 {
 	int prefix_len = _strlen(prefix);
@@ -96,7 +128,8 @@ int is_command(char* prefix, char** command)
 	return r;
 }
 
-// Increment *command if the argument matches.
+// Increment *command past the argument if the argument matches.
+// Returns if the command immediatly contained the argument.
 int is_arg(char* arg, char** command)
 {
 	char* command_p = *command;
@@ -162,6 +195,12 @@ int parse_int(char** command)
 	return stoi(command_int);
 }
 
+void print_initialization_incomplete()
+{
+	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
+	Print(pid, "Initialization incomplete, command ignored!\n\r");
+}
+
 void print_invalid_argument()
 {
 	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
@@ -177,42 +216,91 @@ void print_invalid_command()
 void clear_invalid_message()
 {
 	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "                                \n\r");
+	Print(pid, "                                               \n\r");
 }
 
-// TEMP Pulled from a0 and should be replaced.
+void print_time(int curr_time)
+{
+	// Create time string
+	float seconds_float = (float)curr_time / 100.0f;
+	int tenths = ((int)(seconds_float*10))%10;
+	int seconds = ((int)seconds_float)%60;
+	int minutes = seconds_float/60;
+
+	char tenths_str[8];
+	char seconds_str[8];
+	char minutes_str[8];
+
+	itos(tenths, tenths_str);
+	itos(seconds, seconds_str);
+	itos(minutes, minutes_str);
+
+	// If seconds is 1 digit, add zero in front
+	if(_strlen(seconds_str) == 1)
+	{
+		seconds_str[2] = 0;
+		seconds_str[1] = seconds_str[0];
+		seconds_str[0] = '0';
+	}
+
+	Print(pid, "%s:%s.%s\n\r\n\r", minutes_str, seconds_str, tenths_str);
+}
+
 void process_command()
 {	
 	if (command_len == 0) return;
-	// if (command_len == 1 && command[0] == 'q'); // Do nothing currently
 
 	char* command_p = command;
 
-	if (command_len == 1) return;
-	if (is_command("tr", &command_p)) 
+	// All commands past this point (q, tr, rv, sw) are dangerous if executed
+	// during initialization.
+	if(!track_initialized)
+	{
+		print_initialization_incomplete();
+		return;
+	} 
+
+	if (is_command("q", &command_p)) 
+	{
+		Shutdown();
+	}
+	else if (is_command("tr", &command_p)) 
 	{
 		int t_number = parse_int(&command_p);
 		int t_speed = parse_int(&command_p);
 
 		if(command_p == 0) print_invalid_argument();
 
-        Putc(com1_id, COM1, t_speed);
-        Putc(com1_id, COM1, t_number);
+		SetSpeed(tcid, t_number, t_speed);
 	}
 	else if (is_command("rv", &command_p)) 
 	{
 		int t_number = parse_int(&command_p);
 		if(command_p == 0) print_invalid_argument();
+
+		Reverse(tcid, t_number);
 	}
 	else if (is_command("sw", &command_p)) 
 	{
-		/*int s_number = */parse_int(&command_p);
+		int s_number = parse_int(&command_p);
 
 		if(command_p == 0) print_invalid_argument();
 
-		if(is_arg("C", &command_p)) {}
-		else if(is_arg("S", &command_p)) {}
+		if(is_arg("C", &command_p))
+		{
+			assert(switch_states[s_number]);
+			SwitchTrackAsync(tcid, s_number, CURVED);
+			switch_states[s_number] = 'C';
+		} 
+		else if(is_arg("S", &command_p))
+		{
+			assert(switch_states[s_number]);
+			SwitchTrackAsync(tcid, s_number, STRAIGHT);
+			switch_states[s_number] = 'S';
+		} 
 		else print_invalid_argument();
+
+		switch_updated = 1;
 	}
 	else
 	{
@@ -220,6 +308,8 @@ void process_command()
 	}
 }
 
+// Continously spins for input from the UART2 server and sends it 
+// to the terminal task.
 void input_notifier()
 {
 	int pid = WhoIs("com2");
@@ -237,25 +327,165 @@ void input_notifier()
     }
 }
 
+// Continously spins for sensor data from the tc server and sends it 
+// to the terminal task. 
+// Will eventually be moved to notify the task controlling the trains.
+void sensor_state_notifier()
+{
+	tcid = WhoIs("tc_server");
+	int tid = WhoIs("terminal");
+	int cid = WhoIs("clock_server");
+	while(cid < 0) cid = WhoIs("clock_server");
+
+	char sensor_dump[10];
+	char reply[1];
+
+	for(;;)
+	{
+		GetSensors(tcid, sensor_dump);
+
+		// Notify server that a sensor dump was completed
+        Send(tid, sensor_dump, 10, reply, 0);
+	}
+}
+
+// TEMP
+void add_sensor_to_queue(int sensor)
+{
+	for(int i = 15; i != 0; i--) sensor_states[i] = sensor_states[i-1];
+	sensor_states[0] =  sensor;
+}
+
+// TEMP
+// TODO Generalize to be used in TC1 and TC2
+// Parses a 10 byte sensor dump and adds newly triggered sensors 
+// to the sensor queue.
+int parse_sensor_states(char* sensor_bytes)
+{
+	int updated = 0;
+
+	for( int i = 0; i != 10; i+=2)
+	{
+		char byte1 = sensor_bytes[i];
+		char byte2 = sensor_bytes[i+1];
+		int data = byte1;
+		data = data << 8;
+		data += byte2;
+
+		int sensor_bank = i/2;
+
+		for(int i = 16; i != 0; i--)
+		{
+			int sensor = sensor_bank * 16 + i;
+			if(data & 1) 
+			{
+				if(!all_sensor_states[sensor])
+				{
+					updated = 1;
+					add_sensor_to_queue(sensor_bank * 16 + (i-1)); 
+					all_sensor_states[sensor] = 1;
+				}
+			}
+			else
+			{
+				all_sensor_states[sensor] = 0;
+			}
+			data = data >> 1;
+		}
+	}
+
+	return updated;
+}
+
+// For printing the time and debugging spinner print
+void terminal_tick_notifier()
+{
+    int tcid = WhoIs("terminal");
+    int csid = WhoIs("clock_server");
+
+    char message[4];
+    char reply[1];
+
+    for(;;)
+    {
+        int time = Delay(csid, TERMINAL_TICK_NOTIFIER_DELAY);
+        pack_int(time, message);
+
+        // Notify server that time has changed
+        Send(tcid, message, 4, reply, 0);
+    }
+}
+
+// Notify the terminal when track initialization is complete
+void track_initialized_notifier()
+{
+	tcid = WhoIs("tc_server");
+	int tid = WhoIs("terminal");
+
+	char msg[1];
+	char reply[1];
+
+	InitComplete(tcid);
+
+	// Notify server that tc server initialization has completed
+	Send(tid, msg, 0, reply, 0);
+}
+
 void terminal(void)
 {
 	pid = WhoIs("com2");
 	com1_id = WhoIs("com1");
+	int csid = WhoIs("clock_server");
 
 	RegisterAs("terminal");
 	int sender;
-
-	int input_notifier_id = Create(3, input_notifier);
-
-    command_len = 0;
-    last_command_len = 0;
-    command[0] = 0;
-	char msg[MAX_TPRINT_SIZE];
 
 	// Initial output setup
 	ClearScreen(pid);
     MoveCursor(pid, 0, 3);
 	Print(pid, "\033[?25l"); // Hide Cursor
+
+	// Initialize variables for displaying
+	for(int i = 0; i != 16; i++) sensor_states[i] = -1;
+	for(int i = 0; i != 128; i++) all_sensor_states[i] = 0;
+
+	int input_notifier_id = Create(3, input_notifier);
+	int sensor_state_notifier_id = -1; // Created after initialization
+	int terminal_tick_notifer_id = Create(3, terminal_tick_notifier);
+	int track_initialized_notifier_id = Create(3, track_initialized_notifier);
+
+	// Debugging spinner variables
+	// TODO Move spinner to a new task entirely? Since timer currently accomplishes same task.
+	char *spinner = "-\\|/-\\|/"; 
+	int spinner_state = 0;
+	int spinner_length = _strlen(spinner);
+	int spinner_ticks_per_frame = 10;
+	spinner_ticks_per_frame /= TERMINAL_TICK_NOTIFIER_DELAY;
+
+	int time = Time(csid);
+
+	track_initialized = 0;
+
+	// Initialize switch states for printing
+	// TODO Rememdy code repetition between tc_server and here?
+	int switches[SWITCH_COUNT];
+	for(int i = 0; i != 18; i++) switches[i] = i + 1;
+	switches[18] = 0x99;
+	switches[19] = 0x9A;
+	switches[20] = 0x9B;
+	switches[21] = 0x9C;
+	for(int i = 0; i != 256; i++) switch_states[i] = 0;
+	for(int i = 0; i != SWITCH_COUNT; i++) switch_states[switches[i]] = 'S';
+	switch_updated = 1;
+
+	// Initialize command buffer
+    command_len = 0;
+    last_command_len = 0;
+    command[0] = 0;
+	char msg[MAX_TPRINT_SIZE];
+
+	MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
+	Print(pid, "INITIALIZING...");
 
     for(;;)
     {
@@ -280,7 +510,8 @@ void terminal(void)
 					break;
 
 				case 27: // ESC
-					// Do nothing currently
+					if(!track_initialized) break;
+					Shutdown();
 					break;
 
 				case 13: // Return pressed
@@ -301,11 +532,112 @@ void terminal(void)
 			// Load saved cursor
 			Print(pid, "\033[u");
 		}
+		else if(sender == sensor_state_notifier_id)
+		{
+			// A sensor dump has occured
+
+			MoveCursor(pid, 0,20);
+
+			// If sensor states have been updated, reprint the sensor state queue
+			if(parse_sensor_states(msg))
+			{
+				MoveCursor(pid, 1, SENSOR_PRINT_HEIGHT);
+				Print(pid, "LAST 16 SENSOR HITS: ");
+				MoveCursor(pid, 22, SENSOR_PRINT_HEIGHT);
+				char sensor[32];
+
+				for(int i = 0; i != 16; i++)
+				{
+					if(sensor_states[i] == -1) break;
+					itos(sensor_states[i], sensor);
+
+					char sensor_str[4];
+					sensor_str[3] = 0;
+					char* number_part =sensor_str + 1;
+
+					sensor_str[0] = 'A' + sensor_states[i]/16;
+					itos(sensor_states[i]%16+1, number_part);
+
+					Print(pid, sensor_str);
+					Putc(pid, COM2, ' ');
+				}
+			}
+
+		}
+		else if (sender == terminal_tick_notifer_id)
+		{
+			// Update time and spinner
+
+			time = unpack_int(msg);
+
+			// Save where cursor was
+			Print(pid, "\033[s");
+
+			MoveCursor(pid, 1, TIME_PRINT_HEIGHT);
+			print_time(time);
+
+			// Load saved cursor
+			Print(pid, "\033[u");
+
+			if(time % spinner_ticks_per_frame == 0)
+			{
+				// Save where cursor was
+				Print(pid, "\033[s");
+
+				MoveCursor(pid, 0, SPINNER_PRINT_HEIGHT);
+				Putc(pid, COM2, spinner[spinner_state]);
+
+				// Load saved cursor
+				Print(pid, "\033[u");
+				spinner_state++;
+				spinner_state %= spinner_length;
+			}
+		}
+		else if (sender == track_initialized_notifier_id)
+		{
+			sensor_state_notifier_id = Create(3, sensor_state_notifier);
+			track_initialized = 1;
+			MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
+			Print(pid, "                ");
+		}
 		else // Task requested to print to terminal
 		{
 			// For now, just print it.
-			// TODO Violates servers not sending???
+			// TODO Move prints from other tasks to a designated scrolling area.
 			UPrint(pid, msg);
+		}
+
+		// Reprint switch states if they have changed
+		if(switch_updated)
+		{
+			MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT);
+			Print(pid, "SWITCHES:");
+
+			MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT + 1);
+			char switch_number[32];
+
+			int spacing = 5;
+
+			for(int i = 0; i != SWITCH_COUNT; i++)
+			{
+				format_string ( switch_number, 32, "%d", switches[i] );
+
+				int space_left = spacing - _strlen(switch_number);
+
+				Print(pid, switch_number);
+				for (int i = 0; i != space_left; i++) Putc(pid, COM2, ' ');
+			}
+
+			MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT + 2);
+			for(int i = 0; i != SWITCH_COUNT; i++)
+			{
+				char switch_state = switch_states[switches[i]];
+
+				Putc(pid, COM2, switch_state);
+				for (int i = 0; i != spacing - 1; i++) Putc(pid, COM2, ' ');
+			}
+
+			switch_updated = 0;
 		}
 		
 		Reply(sender, msg, 0);

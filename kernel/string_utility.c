@@ -89,6 +89,11 @@ int stoi(char* s)
 	return r;
 }
 
+// Takes a pointer to a char buffer that will be incremented
+// to the next available spot after placing a character. This
+// pointer is set to 0 if room in the buffer has run out.
+// "size" represents the space left in the buffer, and is decremented 
+// if the character is placed in the buffer.
 void sputc(char** result, int* size, char c)
 {
 	if(*size <= 0 || (*result) == 0)
@@ -102,6 +107,8 @@ void sputc(char** result, int* size, char c)
 	(*size)--;
 }
 
+// Analagous to bwputw but uses sputc instead of bwputc to
+// "print" to a buffer instead of directly to terminal.
 void sputw( char** result, int* size, int n, char fc, char *bf ) {
 	char ch;
 	char *p = bf;
@@ -110,6 +117,9 @@ void sputw( char** result, int* size, int n, char fc, char *bf ) {
 	while( n-- > 0 ) sputc( result, size, fc );
 	while( ( ch = *bf++ ) ) sputc( result, size, ch );
 }
+
+// The following functions which do not print characters were copied from bwio.c to avoid 
+// changing the bwio static library.
 
 int sa2d( char ch ) {
 	if( ch >= '0' && ch <= '9' ) return ch - '0';
@@ -158,6 +168,10 @@ void si2a( int num, char *bf ) {
 	sui2a( num, 10, bf );
 }
 
+// Functions the same as bwformat except "prints" to the buffer "result"
+// instead of directly to terminal.  "size" represents the size of the
+// buffer. Returns non-zero if space in the buffer ran out, in which case
+// the "printed" string has been truncated.
 int _format_string ( char* result, int size, char *fmt, va_list va ) {
 	char bf[12];
 	char ch, lz;
@@ -229,4 +243,36 @@ int format_string ( char* result, int size, char *fmt, ... )
 	va_end(va);
 
 	return r;
+}
+
+// Store an int into a 4 byte long char array
+void pack_int(int i, char* buffer)
+{
+    // int* b = (int*) buffer;
+    // *b = i;
+    
+    unsigned char* b = (unsigned char*) buffer;
+    for(int j = 3; j >= 0; j--)
+    {
+        b[j] = i & 0xff;
+        i = i >> 8;
+    }
+}
+
+// Extract an int from a 4 byte long char array create by pack_int
+int unpack_int(char* buffer)
+{
+    // int* b = (int*) buffer;
+    // return *b;
+
+    unsigned char* b = (unsigned char*) buffer;
+    int r = 0;
+    for(int i = 0; i != 3; i++)
+    {
+        r |= (unsigned int)b[i];
+        r = r << 8;
+    }
+    r |= (unsigned int)b[3];
+
+    return r;
 }

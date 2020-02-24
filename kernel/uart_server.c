@@ -5,19 +5,22 @@
 #include "name_server.h"
 #include "uart.h"
 #include "await.h"
+#include "string_utility.h"
 
 #define GET_CHAR 1
 #define PUT_CHAR 2
-#define CHAR_RECEIVED 3
-#define PUT_READY 4
-#define NOTIFIER_STARTUP 5
+#define PUT_COMMAND 3
+#define CHAR_RECEIVED 4
+#define PUT_READY 5
+#define NOTIFIER_STARTUP 6
 
 // First byte is the channel, Second is the operation
-#define US_REQUEST_LENGTH 2
+#define US_REQUEST_LENGTH 3
 #define US_REPLY_LENGTH 1
 
 #define BUFFER_SIZE 10240
 
+// A circular buffer of chars
 typedef struct ring_buffer RingBuffer;
 
 struct ring_buffer
@@ -58,13 +61,13 @@ int Getc(int tid, int channel)
     // Currently channel is ignored
     // assert(channel == COM1 || channel == COM2);
 
-    char message[US_REQUEST_LENGTH];
+    char message[1];
     char reply[US_REPLY_LENGTH];
 
     message[0] = GET_CHAR;
 
     // if tid is not the task id of an existing task.
-    if(Send(tid, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH) == -1) 
+    if(Send(tid, message, 1, reply, US_REPLY_LENGTH) == -1) 
         return INVALID_UART_SERVER;
 
     return reply[0];
@@ -75,14 +78,33 @@ int Putc(int tid, int channel, char ch)
     // Currently channel is ignored
     // assert(channel == COM1 || channel == COM2);
 
-    char message[US_REQUEST_LENGTH];
+    char message[2];
     char reply[US_REPLY_LENGTH];
 
     message[0] = PUT_CHAR;
     message[1] = ch;
 
     // if tid is not the task id of an existing task.
-    if(Send(tid, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH) == -1) 
+    if(Send(tid, message, 2, reply, US_REPLY_LENGTH) == -1) 
+        return INVALID_UART_SERVER;
+
+    return 0;
+}
+
+int PutCommand(int tid, int channel, char ch1, char ch2)
+{
+    // Currently channel is ignored
+    // assert(channel == COM1 || channel == COM2);
+
+    char message[3];
+    char reply[US_REPLY_LENGTH];
+
+    message[0] = PUT_COMMAND;
+    message[1] = ch1;
+    message[2] = ch2;
+
+    // if tid is not the task id of an existing task.
+    if(Send(tid, message, 3, reply, US_REPLY_LENGTH) == -1) 
         return INVALID_UART_SERVER;
 
     return 0;
@@ -101,7 +123,7 @@ void uart1_getc_notifer(void)
 
     for(;;)
     {
-        AwaitEvent(EVENT_UART1_RX_INTERRUPT);
+        message[1] = AwaitEvent(EVENT_UART1_RX_INTERRUPT);
 
         // Notify server that a character was received
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
@@ -118,9 +140,7 @@ void uart1_putc_notifer(void)
 
     for(;;)
     {
-        // Get char to print
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
-
         AwaitEvent(EVENT_UART1_CTS_LOW);
         AwaitEvent(EVENT_UART1_CTS_HIGH);
         AwaitEvent(EVENT_UART1_TX_INTERRUPT);
@@ -134,16 +154,16 @@ void uart1_server(void)
 
     // Notifiers and must be one priority level higher
     // Both notifiers start off initially blocked
+    // and only one is ever unblocked at a time.
     int uart1_getc_notifer_tid  =  Create(0, uart1_getc_notifer);
     int uart1_putc_notifer_tid  = Create(0, uart1_putc_notifer);
 
     RingBuffer put_buffer;
+    // TODO, replace with a single character since only one task can call Getc at a time
     RingBuffer get_buffer;
 
-    // int unblocked_notifier = -1;
     int queued_getc_task = -1;
     int put_ready = 1;
-    int get_ready = 0;
 
     int receiving = 0;
 
@@ -163,16 +183,18 @@ void uart1_server(void)
         switch(msg[0])
         {
             case GET_CHAR:
-                if(get_buffer.size > 0) 
+                // print("GET_CALLED");
+                
+                if(get_buffer.size > 0) // Character already received, reply immediately
                 {
                     reply_msg[0] = remove_byte(&get_buffer);
                     Reply(sender, reply_msg, US_REPLY_LENGTH);
                 }
-                else if(queued_getc_task == -1)
+                else if(queued_getc_task == -1) // Block until char received
                 {
                     queued_getc_task = sender;
                 }
-                else 
+                else // Another task is already waiting for a char, return error code
                 {
                     reply_msg[0] = OTHER_TASK_QUEUED;
                     Reply(sender, reply_msg, US_REPLY_LENGTH);
@@ -180,24 +202,62 @@ void uart1_server(void)
                 break;
 
             case PUT_CHAR:
+                // print("PUT_CALLED ");
+                // Put char onto queue to be sent asap and reply immediately
                 add_byte(&put_buffer, msg[1]);
                 Reply(sender, reply_msg, US_REPLY_LENGTH);
                 break;
 
+            case PUT_COMMAND:
+                // print("PUT_COMMAND_CALLED ");
+                // Put both chars onto queue to be sent asap and reply immediately
+                add_byte(&put_buffer, msg[1]);
+                add_byte(&put_buffer, msg[2]);
+                Reply(sender, reply_msg, US_REPLY_LENGTH);
+                break;
+
             case CHAR_RECEIVED:
+                // print("CHAR_RECEIVED ");
                 // Only allow authorized notifer to send this message
                 if( sender != uart1_getc_notifer_tid ) break;
-                get_ready = 1;
+
+                char read_byte = msg[1];
+
+                receiving--;
+                assert(receiving >= 0);
+
+                // If no more bytes are expected, uart is ready to putc again.
+                // Otherwise wake getc notifer again.
+                if(receiving == 0)
+                {
+                    add_byte(&get_buffer, read_byte);
+                    // We assume that after our last byte has been received, we are 
+                    // immediately ready to transmit since UART1 is half-duplex.
+                    put_ready = 1;
+                }
+                else
+                {
+                    add_byte(&get_buffer, read_byte);
+                    Reply(uart1_getc_notifer_tid, reply_msg, 0);
+                }
+
                 break;
 
             case PUT_READY:
+                // print("PUT_READY ");
+                // Sent by the putc notifier
                 if( sender != uart1_putc_notifer_tid ) break;
                 put_ready = 1;
                 break;
 
             case NOTIFIER_STARTUP:
+                // print("NOTIFIER_STARTUP ");
                 // Do nothing, this message was sent to make the 
                 // getc notifier initially blocked.
+                break;
+
+            default:
+                assert(0);
                 break;
         }
 
@@ -206,22 +266,26 @@ void uart1_server(void)
         // Currently just prioritize sending
         // TODO Maybe only have one queue to maintain order of get and puts?
         //      if not then maybe interleave gets and puts.
-        if(put_ready && put_buffer.size > 0)
+        if(put_ready && put_buffer.size > 0 && receiving == 0)
         {
             char c = remove_byte(&put_buffer);
 
             // If the character being put triggers a sensor dump,
-            // set receiving to the number of bytes expected
-            if(c >= MULTI_SENSOR_DUMP_OFFSET)
+            // set receiving to the number of bytes expected,
+            // leave the putc notifier blocked, and unblock the getc notifier.
+            if((c >= MULTI_SENSOR_DUMP_OFFSET && c <= MULTI_SENSOR_DUMP_OFFSET + 5) ||
+               (c >= SINGLE_SENSOR_DUMP_OFFSET && c <= SINGLE_SENSOR_DUMP_OFFSET + 5))
             {
                 if(c >= SINGLE_SENSOR_DUMP_OFFSET)
                     receiving = c - SINGLE_SENSOR_DUMP_OFFSET;
                 else
                     receiving = c - MULTI_SENSOR_DUMP_OFFSET;
 
-                uart_send_byte(UART1, c);
-                // Unblock getc notifer
+                receiving *= 2;
+
                 Reply(uart1_getc_notifer_tid, reply_msg, 0);
+                // Reply(uart1_putc_notifer_tid, reply_msg, 0);
+                uart_send_byte(UART1, c);
             }
             else
             {
@@ -232,26 +296,6 @@ void uart1_server(void)
             }
 
             put_ready = 0;
-        }
-        else if(get_ready && receiving > 0)
-        {
-            receiving--;
-            assert(receiving > 0);
-
-            // If no more bytes are expected, wake putc notifer.
-            // Otherwise wake getc notifer again.
-            if(receiving == 0)
-            {
-                Reply(uart1_putc_notifer_tid, reply_msg, 0);
-                add_byte(&get_buffer, uart_read_byte(UART1));
-            }
-            else
-            {
-                add_byte(&get_buffer, uart_read_byte(UART1));
-                Reply(uart1_getc_notifer_tid, reply_msg, 0);
-            }
-
-            get_ready = 0;
         }
 
         if(queued_getc_task != -1 && get_buffer.size > 0)
@@ -274,7 +318,7 @@ void uart2_getc_notifer(void)
         char reply[US_REPLY_LENGTH];
         message[0] = CHAR_RECEIVED;
 
-        AwaitEvent(EVENT_UART2_RX_INTERRUPT);
+        message[1] = AwaitEvent(EVENT_UART2_RX_INTERRUPT);
         
         // Notify server that a character was received
         Send(s_id, message, US_REQUEST_LENGTH, reply, US_REPLY_LENGTH);
@@ -304,6 +348,7 @@ void uart2_server(void)
     RegisterAs("com2");
 
     // Notifiers and must be one priority level higher
+    // Both notifiers may be unblocked at a time.
     int uart2_getc_notifer_tid  = Create(0, uart2_getc_notifer);
     int uart2_putc_notifer_tid  = Create(0, uart2_putc_notifer);
 
@@ -330,16 +375,16 @@ void uart2_server(void)
         switch(msg[0])
         {
             case GET_CHAR:
-                if(get_buffer.size > 0) 
+                if(get_buffer.size > 0) // Character already received, reply immediately
                 {
                     reply_msg[0] = remove_byte(&get_buffer);
                     Reply(sender, reply_msg, US_REPLY_LENGTH);
                 }
-                else if(queued_getc_task == -1)
+                else if(queued_getc_task == -1) // Block until char received
                 {
                     queued_getc_task = sender;
                 }
-                else 
+                else // Another task is already waiting for a char, return error code
                 {
                     reply_msg[0] = OTHER_TASK_QUEUED;
                     Reply(sender, reply_msg, US_REPLY_LENGTH);
@@ -351,11 +396,16 @@ void uart2_server(void)
                 Reply(sender, reply_msg, US_REPLY_LENGTH);
                 break;
 
+            case PUT_COMMAND:
+                // Currently not supported.
+                assert(0);
+                break;
+
             case CHAR_RECEIVED:
                 // Only allow authorized notifer to send this message
                 if( sender != uart2_getc_notifer_tid ) break;
 
-                add_byte(&get_buffer, uart_read_byte(UART2));
+                add_byte(&get_buffer, msg[1]);
 
                 // Unblock notifer so it can start awaiting again
                 Reply(uart2_getc_notifer_tid, reply_msg, 0);
@@ -368,11 +418,6 @@ void uart2_server(void)
                 break;
         }
 
-        // Choose if we are going to read or write next
-        // and only ever unblock one notifer at a time
-        // Currently just prioritize sending
-        // TODO Maybe only have one queue to maintain order of get and puts?
-        //      if not then maybe interleave gets and puts.
         if(put_ready && put_buffer.size > 0)
         {
             char c = remove_byte(&put_buffer);
@@ -396,6 +441,7 @@ void uart2_server(void)
 
 void create_uart_servers(void)
 {
+    // Create(1, uart1_noqueue_server);
     Create(1, uart1_server);
     Create(1, uart2_server);
 }

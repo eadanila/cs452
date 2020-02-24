@@ -25,6 +25,10 @@ int main(int argc, char *argv[]) {
     uint cpsr_mode = 0x13;
     int init_done = 0;
     
+    // idle_printer defines the idle_time, start_time, end_time variables
+    // which are written to by the kernel and represent the time spent idle.
+    // idle_task running is used solely to calculate the idle time and
+    // halt the processor.
     int idle_task_id = kcreate(7, (uint)idle_task);
     DEBUG("Idle task ID: %d", idle_task_id);
     kcreate(6, (uint)idle_printer);
@@ -64,7 +68,8 @@ int main(int argc, char *argv[]) {
         }
         else if (cpsr_mode == 0x13) {
             DEBUG("SWI CAUGHT");
-            handle_swi(id);
+            // If handle_swi is non_zero, a shutdown condition has occured.
+            if(handle_swi(id)) break;
 
             if(get_active_tasks_count() > LONG_RUNNING_TASK_COUNT)
                 init_done = 1;

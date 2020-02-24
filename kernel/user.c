@@ -13,6 +13,7 @@
 #include "uart_server.h"
 #include "print.h"
 #include "terminal.h"
+#include "tc_server.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -369,6 +370,12 @@ void clock_server_error_test()
 
 void umain(void)
 {
+    name_server_id = Create(0, name_server);
+    Create(0, clock_server);
+    create_uart_servers();
+    Create(2, tc_server);
+    Create(4, terminal);
+
     // uart_send_byte(UART1, 16);
     // AwaitEvent(EVENT_UART1_CTS_LOW);
     // AwaitEvent(EVENT_UART1_CTS_HIGH);
@@ -377,13 +384,6 @@ void umain(void)
     // AwaitEvent(EVENT_UART1_CTS_LOW);
     // AwaitEvent(EVENT_UART1_CTS_HIGH);
     // AwaitEvent(EVENT_UART1_TX_INTERRUPT);
-
-    name_server_id = Create(0, name_server);
-    Create(0, clock_server);
-
-    create_uart_servers();
-
-    Create(4, terminal);
     
     // TODO Perhaps move to kernel and #define the id
     // name_server_id = Create(0, name_server);

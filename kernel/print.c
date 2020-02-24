@@ -3,6 +3,10 @@
 #include <bwio.h>
 #include "uart_server.h"
 
+// These functions mirror those used in bwio.c, but use Putc interally instead.
+// Some functions which do not print characters were copied over to avoid 
+// changing the bwio static library.
+
 // Copy and rename of bwa2d
 int a2d( char ch ) {
 	if( ch >= '0' && ch <= '9' ) return ch - '0';

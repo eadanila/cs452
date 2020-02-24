@@ -155,6 +155,17 @@ void kcleanup(void) {
     disable_interrupt(INTERRUPT_TC3UI);
     disable_timer(TIMER_TC1);
     clear_timer(TIMER_TC1);
+
+    disable_interrupt(INTERRUPT_UART1RXINTR1);
+    disable_interrupt(INTERRUPT_UART1TXINTR1);
+    disable_interrupt(INTERRUPT_UART1);
+    disable_interrupt(INTERRUPT_UART2RXINTR2);
+    disable_interrupt(INTERRUPT_UART2TXINTR2);
+    // disable_interrupt(INTERRUPT_UART2);
+
+    // Clear RX interupts by reading bytes
+    uart_read_byte(UART1);
+    uart_read_byte(UART2);
 }
 
 
@@ -197,8 +208,9 @@ void kinit(void) {
 
     enable_interrupt(INTERRUPT_TC1UI);
 
+    set_timer_clock(TIMER_TC1, 1); // 508.4KHz
     set_timer_mode(TIMER_TC1, 1);
-    set_timer_load_value(TIMER_TC1, 20);
+    set_timer_load_value(TIMER_TC1, 5084); // 10ms @ 508.4KHz => 5084 clock cycles
     enable_timer(TIMER_TC1);
 
     enable_interrupt(INTERRUPT_UART1RXINTR1);
@@ -207,7 +219,7 @@ void kinit(void) {
 
     enable_interrupt(INTERRUPT_UART2RXINTR2);
     enable_interrupt(INTERRUPT_UART2TXINTR2);
-    enable_interrupt(INTERRUPT_UART2);
+    // enable_interrupt(INTERRUPT_UART2);
 
     DEBUG("kint() finished");
 }
