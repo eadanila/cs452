@@ -13,9 +13,12 @@
 
 #define SYSCALL_AWAIT 9
 
+#define SYSCALL_SHUTDOWN 10
+
 #include "kernel.h"
 
-void handle_swi(int caller);
+// Returns non-zero for shutdown
+int handle_swi(int caller);
 
 int kcreate(int priority, uint function);
 
@@ -30,6 +33,8 @@ int Receive(int *tid, char *msg, int msglen);
 int Reply(int tid, const char *reply, int rplen);
 
 int AwaitEvent(int eventid);
+
+void Shutdown(void);
 
 // Put "b scream" anywhere in assembly for basic debugging
 void scream(uint sp);

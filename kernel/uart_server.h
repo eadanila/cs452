@@ -10,6 +10,9 @@
 int Getc(int tid, int channel);
 int Putc(int tid, int channel, char ch);
 
+// Currently only supported for COM1. Atomically putc twice for commands.
+int PutCommand(int tid, int channel, char ch1, char ch2);
+
 void uart1_getc_notifer(void);
 void uart1_putc_notifer(void);
 
@@ -19,6 +22,7 @@ void uart2_putc_notifer(void);
 void uart1_server(void);
 void uart2_server(void);
 
-void create_uart_servers(void); // Create a priority 0
+// Create the above servers at the correct priorities
+void create_uart_servers(void);
 
 #endif

@@ -3,6 +3,7 @@
 #include "syscall.h"
 #include "name_server.h"
 #include "logging.h"
+#include "string_utility.h"
 
 #define CS_REQUEST_LENGTH 5 // 1 char for operation type, 4 chars for int paramter
 #define REPLY_LENGTH 4 // 4 chars for int parameter
@@ -22,6 +23,7 @@ void init_sorted_list(SortedList* l)
 
     l->free = &l->nodes[0];
     l->list = 0;
+    l->size = 0;
 }
 
 // Add a tid associated with a time to a SortedList structure.
@@ -41,6 +43,7 @@ int add_item(SortedList* l, int tid, int time)
 
         l->list->tid = tid;
         l->list->time = time;
+        l->size++;
 
         return 0;
     }
@@ -58,6 +61,7 @@ int add_item(SortedList* l, int tid, int time)
 
         new_node->tid = tid;
         new_node->time = time;
+        l->size++;
 
         return 0;
     }
@@ -79,6 +83,7 @@ int add_item(SortedList* l, int tid, int time)
 
     new_node->tid = tid;
     new_node->time = time;
+    l->size++;
 
     return 0;
 }
@@ -107,43 +112,12 @@ void remove_front(SortedList *l)
     l->free = l->list;
     l->list = l->list->next;
     l->free->next = next_free;
+    l->size--;
 }
 
 int is_empty(SortedList *l)
 {
     return l->list == 0;
-}
-
-// Store an int into a 4 byte long char array
-void pack_int(int i, char* buffer)
-{
-    // int* b = (int*) buffer;
-    // *b = i;
-    
-    unsigned char* b = (unsigned char*) buffer;
-    for(int j = 3; j >= 0; j--)
-    {
-        b[j] = i & 0xff;
-        i = i >> 8;
-    }
-}
-
-// Extract an int from a 4 byte long char array create by pack_int
-int unpack_int(char* buffer)
-{
-    // int* b = (int*) buffer;
-    // return *b;
-
-    unsigned char* b = (unsigned char*) buffer;
-    int r = 0;
-    for(int i = 0; i != 3; i++)
-    {
-        r |= (unsigned int)b[i];
-        r = r << 8;
-    }
-    r |= (unsigned int)b[3];
-
-    return r;
 }
 
 int Time(int tid)
@@ -293,12 +267,13 @@ void clock_server(void)
 
         // Unblock all tasks whos time that they're expected to delay until has passed.
         // Remove them from the waiting list once they are unblocked.
-        while(!is_empty(&waiting) && peek_front_time(&waiting) <= ticks_elapsed)
+        while(!is_empty(&waiting) && (peek_front_time(&waiting) <= ticks_elapsed))
         {
+            int tid = peek_front_tid(&waiting);
             pack_int(ticks_elapsed, reply_msg);
-            Reply(peek_front_tid(&waiting), reply_msg, REPLY_LENGTH);
-            
+
             remove_front(&waiting);
+            Reply(tid, reply_msg, REPLY_LENGTH);
         }
     }
 }

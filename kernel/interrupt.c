@@ -238,8 +238,8 @@ uint handle_vic2(void) {
     // UART2 combined interrupt
     interrupt = (1 << (INTERRUPT_UART2-32));
     if (vic & interrupt) {
-        handle_uart_combined_interrupt(UART2);
-        disable_uart_combined_interrupt(UART1);
+        // handle_uart_combined_interrupt(UART2);
+        // disable_uart_combined_interrupt(UART2);
         handled |= interrupt;
     }
 
