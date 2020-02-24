@@ -77,7 +77,7 @@ class Module():
         outfile.write('\n// ----- END   {0} -----\n'.format(self.c))
 
 
-exclude = ['main', 'panic', 'print_lr', 'scream']
+exclude = ['main', 'panic', 'print_lr', 'scream', 'Print', 'TPrint', 'format_string', 'memset']
 functions = []
 class Function():
     def __init__(self, tag):
@@ -184,6 +184,13 @@ def main(srcdir, builddir):
     if 'constants.h' in headers:
         for h in headers:
             if h == 'constants.h':
+                h.write_header(outfile)
+                headers.remove(h)
+                break
+
+    if 'memset.h' in headers:
+        for h in headers:
+            if h == 'memset.h':
                 h.write_header(outfile)
                 headers.remove(h)
                 break

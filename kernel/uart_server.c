@@ -18,18 +18,6 @@
 #define US_REQUEST_LENGTH 3
 #define US_REPLY_LENGTH 1
 
-#define BUFFER_SIZE 10240
-
-// A circular buffer of chars
-typedef struct ring_buffer RingBuffer;
-
-struct ring_buffer
-{
-	char data[BUFFER_SIZE];
-	int size;
-	int start;
-	int end;
-};
 
 void init_buffer(RingBuffer* r)
 {

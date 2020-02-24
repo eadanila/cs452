@@ -7,6 +7,19 @@
 #define SINGLE_SENSOR_DUMP_OFFSET 192
 #define MULTI_SENSOR_DUMP_OFFSET 128
 
+#define BUFFER_SIZE 10240
+
+// A circular buffer of chars
+typedef struct ring_buffer RingBuffer;
+
+struct ring_buffer
+{
+	char data[BUFFER_SIZE];
+	int size;
+	int start;
+	int end;
+};
+
 int Getc(int tid, int channel);
 int Putc(int tid, int channel, char ch);
 
