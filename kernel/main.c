@@ -11,12 +11,20 @@
 #include "interrupt.h"
 #include "idle.h"
 #include "idle_printer.h"
+#include "train_timing.h"
 
 #include "frame.h"
 
 #include "interrupt.h"
 
 int main(int argc, char *argv[]) {
+    #ifdef TIMING
+    timing();
+    kcleanup();
+
+    return 0;
+    #endif
+
     kinit();
 
     DEBUG("Creating first task -> %x", umain);
