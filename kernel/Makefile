@@ -83,9 +83,6 @@ log: $(BINARY)
 debug: CFLAGS += -DVERBOSITY=5
 debug: $(BINARY)
 
-timing: CFLAGS += -DVERBOSITY=1 -DTIMING=1
-timing: $(BINARY)
-
 install:
 	@echo Installing for `whoami`.
 	-touch /u/cs452/tftp/ARM/`whoami`/kernel

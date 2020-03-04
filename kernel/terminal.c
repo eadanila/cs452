@@ -9,16 +9,13 @@
 #include "clock_server.h"
 #include "tc_server.h"
 #include "timer.h"
-#include "track_display.h"
 
-#define COMMAND_PRINT_HEIGHT 35
+#define COMMAND_PRINT_HEIGHT 24
 #define SWITCH_PRINT_HEIGHT 9
 #define SENSOR_PRINT_HEIGHT 7
 #define TIME_PRINT_HEIGHT 5
 #define INITIALIZATION_PRINT_HEIGHT 3
 #define SPINNER_PRINT_HEIGHT 3
-#define TRACK_PRINT_HEIGHT 13
-#define TRACK_PRINT_COL 2
 
 #define MAX_COMMAND_LEN 127
 #define MAX_TPRINT_SIZE 1024
@@ -52,12 +49,6 @@ volatile int all_sensor_states[128];
 int switches[SWITCH_COUNT];
 char switch_states[256];
 int switch_updated;
-
-TrackView track_a_curved_view;
-TrackView track_a_straight_view;
-TrackView track_b_curved_view;
-TrackView track_b_straight_view;
-char active_track;
 
 void TPrint(int tid, char* str, ... )
 {
@@ -204,12 +195,6 @@ int parse_int(char** command)
 	return stoi(command_int);
 }
 
-void print_invalid_switch_track()
-{
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "Ensure all turnouts are set to straight before switching tracks!\n\r");
-}
-
 void print_initialization_incomplete()
 {
 	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
@@ -231,7 +216,7 @@ void print_invalid_command()
 void clear_invalid_message()
 {
 	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "                                                                            \n\r");
+	Print(pid, "                                               \n\r");
 }
 
 void print_time(int curr_time)
@@ -306,45 +291,16 @@ void process_command()
 			assert(switch_states[s_number]);
 			SwitchTrackAsync(tcid, s_number, CURVED);
 			switch_states[s_number] = 'C';
-
-			if(active_track == TRACK_A) toggle_switch(pid, track_a_curved_view, s_number);
-			else if(active_track == TRACK_B) toggle_switch(pid, track_b_curved_view, s_number);
 		} 
 		else if(is_arg("S", &command_p))
 		{
 			assert(switch_states[s_number]);
 			SwitchTrackAsync(tcid, s_number, STRAIGHT);
 			switch_states[s_number] = 'S';
-
-			if(active_track == TRACK_A) toggle_switch(pid, track_a_straight_view, s_number);
-			else if(active_track == TRACK_B) toggle_switch(pid, track_b_straight_view, s_number);
 		} 
 		else print_invalid_argument();
 
 		switch_updated = 1;
-	}
-	else if (is_command("st", &command_p)) 
-	{
-		for(int i = 0; i != 256; i++)
-		{
-			if(!(switch_states[i] == 0 || switch_states[i] == 'S'))
-			{
-				print_invalid_switch_track();
-				return;
-			}
-		}
-
-		if(is_arg("A", &command_p))
-		{
-			active_track = TRACK_A;
-			print_track(pid, track_a_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
-		} 
-		else if(is_arg("B", &command_p))
-		{
-			active_track = TRACK_B;
-			print_track(pid, track_b_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
-		} 
-		else print_invalid_argument();
 	}
 	else
 	{
@@ -477,210 +433,6 @@ void track_initialized_notifier()
 
 void terminal(void)
 {
-	unsigned int* track_a_straight[] = 
-	{
-	L"──────────────────── ╭─────────────────────────────────────────────────────────────────────────────╮ \n\r",
-	L"                  12 │     ╭ 11                         13           10                            │ \n\r",
-	L"───────────────── ╭──╯     │╭─────────────────────────────────────────────────────────────────────╮│ \n\r",
-	L"                4 │        │ 14                         ╮             ╭                          8 │ \n\r",
-	L"──────────────────╯        │                            │      │ 156  │                            │ \n\r",
-	L"                           │                            │  155 │╭─────╯                            │ \n\r",
-	L"                           │                            ╰─────╮│                                   │ \n\r",
-	L"                           │                                   │                                   │ \n\r",
-	L"                           │                                   │                                   │ \n\r",
-	L"                           │                               153 │                                   │ \n\r",
-	L"                           │                            ╭─────╯│ 154                               │ \n\r",
-	L"                           │                            │      │╰─────╮                            │ \n\r",
-	L"────────────────╮          │                            │      │      │                            │ \n\r",
-	L"              1 │          │ 15                         ╯ 16       17 ╰                          9 │ \n\r",
-	L"─────────────── ╰──╮       │╰─────────────────────────────────────────────────────────────────────╯│ \n\r",
-	L"                 2 │       │                                                                       │ \n\r",
-	L"────────────────── ╰──╮    ╰───────────────────────────────────────────────────────────────────────╯ \n\r",
-	L"                      │                               6 ╮             ╭ 7                            \n\r",
-	L"                    3 ╰                              18 ╰             ╯ 5                            \n\r",
-	L"──────────────────────────────────────────────────────────────────────────────────────────────────── \n\r"
-	};
-
-	unsigned int* track_a_curved[] = 
-	{
-	L"────────────────────────── ╭───────────────────────────────────────────────────────────────────────╮ \n\r",
-	L"                  12 ╭     │ 11                         13           10                            │ \n\r",
-	L"─────────────────────╯     ╭────────────────────────────╮ ─────────── ╭────────────────────────────╮ \n\r",
-	L"                4 ╭        │ 14                         │             │                          8 │ \n\r",
-	L"──────────────────╯        │                            │      │ 156  │                            │ \n\r",
-	L"                           │                            │  155 ╭──────╯                            │ \n\r",
-	L"                           │                            ╰──────╮                                   │ \n\r",
-	L"                           │                                   │                                   │ \n\r",
-	L"                           │                                   │                                   │ \n\r",
-	L"                           │                               153 │                                   │ \n\r",
-	L"                           │                            ╭──────╯ 154                               │ \n\r",
-	L"                           │                            │      ╰──────╮                            │ \n\r",
-	L"────────────────╮          │                            │      │      │                            │ \n\r",
-	L"              1 ╰          │ 15                         │ 16       17 │                          9 │ \n\r",
-	L"───────────────────╮       ╰────────────────────────────╯ ─────────── ╰────────────────────────────╯ \n\r",
-	L"                 2 ╰       │                                                                       │ \n\r",
-	L"──────────────────────╮    ╰────────────────────────────╮ ─────────── ╭────────────────────────────╯ \n\r",
-	L"                      │                               6 │             │ 7                            \n\r",
-	L"                    3 │                              18 │             │ 5                            \n\r",
-	L"───────────────────── ╰──────────────────────────────── ╰─────────────╯ ──────────────────────────── \n\r"
-	};
-	
-	int track_a_turnout_types[SWITCH_COUNT] = 
-	{
-		TURNOUT_LEFT_UP,
-		TURNOUT_LEFT_UP,
-		TURNOUT_LEFT_UP,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_RIGHT_DOWN,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_LEFT_UP,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_RIGHT_DOWN,
-		TURNOUT_RIGHT,
-		TURNOUT_RIGHT,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_LEFT_UP,
-		TURNOUT_LEFT_UP,
-
-		TURNOUT_LEFT,
-		TURNOUT_RIGHT,
-		TURNOUT_LEFT,
-		TURNOUT_RIGHT
-	};
-
-	int track_a_turnout_positions[SWITCH_COUNT*2] = 
-	{
-		14, 16,
-		16, 19,
-		19, 22,
-		2, 18,
-		19, 70,
-		16, 56,
-		16, 70,
-		2, 99,
-		14, 99,
-		2, 70,
-		0, 27,
-		0, 21,
-		2, 56,
-		2, 27,
-		14, 27,
-		14, 56,
-		14, 70,
-		19, 56,
-
-		10, 63,
-		11, 63,
-		6, 63,
-		5, 63,
-	};
-
-	unsigned int* track_b_straight[] = 
-	{
-	L"──────────────────────────────────────────────────────────────────────────────────────────────────── \n\r",
-    L"                           5 ╭             ╮ 18                               ╮ 3                    \n\r",
-    L"                           7 ╯             ╰ 6                                │                      \n\r",
-	L"╭───────────────────────────────────────────────────────────────────────╮     ╰──╮ ───────────────── \n\r",
-	L"│                            17           16                            │        │ 2                 \n\r",
-	L"│╭─────────────────────────────────────────────────────────────────────╮│        ╰──╮ ────────────── \n\r",
-	L"│ 8                          ╮             ╭                         15 │           │ 1              \n\r",
-	L"│                            │  154 │      │                            │           │                \n\r",
-	L"│                            ╰─────╮│ 153  │                            │           │                \n\r",
-	L"│                                   │╭─────╯                            │           │                \n\r",
-	L"│                                   │                                   │           │                \n\r",
-	L"│                                   │                                   │           │                \n\r",
-	L"│                                   │ 156                               │           │                \n\r",
-	L"│                               155 │╰─────╮                            │           │                \n\r",
-	L"│                            ╭─────╯│      │                            │           │                \n\r",
-	L"│                            │      │      │                            │        ╭──╯                \n\r",
-	L"│ 9                          ╯ 10       13 ╰                         14 │      4 │                   \n\r",
-	L"│╰─────────────────────────────────────────────────────────────────────╯│     ╭──╯ ───────────────── \n\r",
-	L"│                                                                    11 ╯  12 ╯                      \n\r",
-	L"╰─────────────────────────────────────────────────────────────────────────────────────────────────── \n\r",
-	};
-
-	unsigned int* track_b_curved[] = 
-	{
-	L"──────────────────────────── ╭─────────────╮ ─────────────────────────────────╮ ──────────────────── \n\r",
-    L"                           5 │             │ 18                               │ 3                    \n\r",
-    L"                             │             │ 6                                │                      \n\r",
-	L"╭────────────────────────────╯ ─────────── ╰────────────────────────────╮     ╰───────────────────── \n\r",
-	L"│                            17           16                            │        ╮ 2                 \n\r",
-	L"╭────────────────────────────╮ ─────────── ╭────────────────────────────╮        ╰────────────────── \n\r",
-	L"│ 8                          │             │                         15 │           ╮ 1              \n\r",
-	L"│                            │  154 │      │                            │           │                \n\r",
-	L"│                            ╰──────╮ 153  │                            │           │                \n\r",
-	L"│                                   ╭──────╯                            │           │                \n\r",
-	L"│                                   │                                   │           │                \n\r",
-	L"│                                   │                                   │           │                \n\r",
-	L"│                                   │ 156                               │           │                \n\r",
-	L"│                               155 ╰──────╮                            │           │                \n\r",
-	L"│                            ╭──────╯      │                            │           │                \n\r",
-	L"│                            │      │      │                            │        ╭──╯                \n\r",
-	L"│ 9                          │ 10       13 │                         14 │      4 ╯                   \n\r",
-	L"╰────────────────────────────╯ ─────────── ╰────────────────────────────╯     ╭───────────────────── \n\r",
-	L"│                                                                    11 │  12 │                      \n\r",
-	L"╰───────────────────────────────────────────────────────────────────────╯ ────╯ ──────────────────── \n\r",
-	};
-
-	int track_b_turnout_types[SWITCH_COUNT] = 
-	{
-		TURNOUT_RIGHT_DOWN,
-		TURNOUT_RIGHT_DOWN,
-		TURNOUT_RIGHT_DOWN,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_LEFT_UP,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_RIGHT,
-		TURNOUT_RIGHT,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_UP_RIGHT,
-		TURNOUT_LEFT_UP,
-		TURNOUT_LEFT,
-		TURNOUT_LEFT,
-		TURNOUT_DOWN_LEFT,
-		TURNOUT_RIGHT_DOWN,
-		TURNOUT_RIGHT_DOWN,
-
-		TURNOUT_RIGHT,
-		TURNOUT_LEFT,
-		TURNOUT_LEFT,
-		TURNOUT_RIGHT
-	};
-
-	int track_b_turnout_positions[SWITCH_COUNT*2] = 
-	{
-		5, 84,
-		3, 81,
-		0, 78,
-		17,81,
-		0, 29,
-		3, 43,
-		3, 29,
-		5, 0,
-		17, 0,
-		17,29,
-		19,72,
-		19,78,
-		17,43,
-	    17,72,
-		5, 72,
-		5, 43,
-		5, 29,
-		0, 43,
-
-		9, 36,
-		8, 36,
-		14,36,
-		13,36
-	};
-
 	pid = WhoIs("com2");
 	com1_id = WhoIs("com1");
 	int csid = WhoIs("clock_server");
@@ -726,13 +478,6 @@ void terminal(void)
 	for(int i = 0; i != SWITCH_COUNT; i++) switch_states[switches[i]] = 'S';
 	switch_updated = 1;
 
-	int switch_to_index[0x9C + 1];
-	for(int i = 1; i != 19; i++) switch_to_index[i] = i - 1;
-	switch_to_index[0x99] = 18;
-	switch_to_index[0x9A] = 19;
-	switch_to_index[0x9B] = 20;
-	switch_to_index[0x9C] = 21;
-
 	// Initialize command buffer
     command_len = 0;
     last_command_len = 0;
@@ -741,19 +486,6 @@ void terminal(void)
 
 	MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
 	Print(pid, "INITIALIZING...");
-
-	active_track = TRACK_A;
-
-	print_track(pid, track_a_straight, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
-
-	init_track_view( &track_a_straight_view, track_a_straight, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_a_turnout_types, track_a_turnout_positions); 
-	init_track_view( &track_a_curved_view, track_a_curved, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_a_turnout_types, track_a_turnout_positions); 
-	init_track_view( &track_b_straight_view, track_b_straight, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_b_turnout_types, track_b_turnout_positions); 
-	init_track_view( &track_b_curved_view, track_b_curved, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_b_turnout_types, track_b_turnout_positions); 
 
     for(;;)
     {
