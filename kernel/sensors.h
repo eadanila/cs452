@@ -14,6 +14,14 @@ int sensor_index(char bank, int sensor_number);
 // into a sensor name of the form <CHAR><INT> such as B15
 void sensor_name(int sensor_index, char* bank, int* sensor_number);
 
+// Identical to sensor_index, but takes in a string representing the sensor
+// bank and it's index in that bank.
+int sensor_string_index(char* s);
+
+// Identical to sensor_name, but returns the sensor name in a string instead.
+// s must be of size 4
+void sensor_name_string(int sensor_index, char* s);
+
 // Parses a 10 byte sensor dump read from a Marklin box. sensor_states and 
 // newly_triggered must be SENSOR_COUNT long arrays. sensor_states should be an 
 // array of booleans indiciating whether or not each sensor was previously

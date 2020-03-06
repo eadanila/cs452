@@ -5,6 +5,7 @@
 #include "name_server.h"
 #include "track.h"
 #include "logging.h"
+#include "sensors.h"
 
 #define TARGET_POSITION 1
 #define SET_POSITION 2
@@ -185,9 +186,17 @@ int is_contained(int element, int* list, int size)
 }
 
 // distance and previous must both be TRACK_MAX size arrays
+// NOTE: Assumes switches may be switched to obtain shortest path.
 void shortest_path(track_node* track, const int track_node_count, int source, int* distance, int* previous)
 {
     // In this implementation, assume every node can be reached from every other node
+
+    // Initialize distance and previous arrays
+    for(int i = 0; i != TRACK_MAX; i++)
+    {
+        distance[i] = INFINITY;
+        previous[i] = -1;
+    } 
 
     int N[TRACK_MAX];
     N[0] = source;
@@ -198,7 +207,6 @@ void shortest_path(track_node* track, const int track_node_count, int source, in
 
     get_neighbors(track, source, neighbors, &neighbors_size);
 
-    for(int i = 0; i != TRACK_MAX; i++) distance[i] = INFINITY;
     for(int i = 0; i != neighbors_size; i++) distance[neighbors[i]] = link_cost(track, source, neighbors[i]);
 
     for(;;)
@@ -264,8 +272,91 @@ void initialize()
     compute_shortest_paths();
 }
 
+// Train path functions
+
+// NOTE: Assuming dest_offset does not reach the node before or after it.
+// TODO Add an error return for this ^
+void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int dest_offset)
+{
+    assert (node != dest);
+    int* previous;
+    int* distances;
+    // track_node* track;
+
+    switch(track_id)
+    {
+        case 'A':
+            previous = shortest_paths_a[node];
+            distances = shortest_distances_a[node];
+            // track = tracka;
+            break;
+
+        case 'B':
+            previous = shortest_paths_b[node];
+            distances = shortest_distances_b[node];
+            // track = trackb;
+            break;
+
+        default:
+            assert(0);
+            return; // To stop distances uninitialized error
+            break;
+    }
+    
+    p->pos.node = node;
+    p->pos.offset = offset;
+    
+    assert(previous[0] != -1);
+
+    // TODO Precompute the following?
+
+    // Pull out and reverse paths from previous arrays created by dijkstras.
+    int prev = dest;
+    int total_distance = distances[dest];
+
+    int path_nodes = 0;
+    while(prev != node)
+    {
+        p->path[path_nodes] = prev;
+        prev = previous[prev];
+
+        path_nodes++;
+    }
+    p->path[path_nodes] = prev; // Put origin in the path
+
+    p->path_len = path_nodes + 1;
+
+    // Reverse the path list which are in reverse order
+    for(int i = 0; i != p->path_len/2; i++) 
+    {
+        int temp = p->path[i];
+        p->path[i] = p->path[p->path_len - 1 - i];
+        p->path[p->path_len - 1 - i] = temp;
+    }
+
+    // Create distance array, invert distances to make them 
+    // distance left instead of distance covered.
+    for(int i = 0; i != p->path_len; i++)
+        p->path_distance[i] = total_distance - distances[p->path[i]];
+
+    p->current_node = 0;
+
+    assert(p->pos.node == p->current_node);
+
+    // Apply dest offsets to all distances, and remove last node if negative offset.
+    for(int i = 0; i != p->path_len; i++) p->path_distance[i] += dest_offset;
+
+    // Remove nodes in path left with negative distances (if offset was negative, some nodes may be rendered useless)
+    while(p->path_len - 1 >=0 && p->path_distance[ p->path_len - 1 ] < 0) p->path_len--;
+
+    assert(p->path_len > 0);
+}
+
 // For now assume using the following train and the following start position 
 #define CONTROLLED_TRAIN 1
+
+#define ORIGIN "A5"
+#define DESTINATION "E14"
 
 void train_control_server(void)
 {
@@ -281,6 +372,14 @@ void train_control_server(void)
     track_id = 0;
 
     initialize();
+
+    // TEMP hardcoded source and dest node indices
+    int source = sensor_string_index(ORIGIN);
+    int dest = sensor_string_index(DESTINATION);
+
+    TrainPathPlan plan;
+    init_train_path_plan(&plan, source, 0, dest, 0);
+    // _target_position(CONTROLLED_TRAIN, DESTINATION, 0);
 
     for(;;)
     {

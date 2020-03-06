@@ -14,6 +14,7 @@
 #include "print.h"
 #include "terminal.h"
 #include "tc_server.h"
+#include "train_control_server.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
@@ -375,6 +376,7 @@ void umain(void)
     create_uart_servers();
     Create(2, tc_server);
     Create(4, terminal);
+    Create(3, train_control_server);
 
     // uart_send_byte(UART1, 16);
     // AwaitEvent(EVENT_UART1_CTS_LOW);

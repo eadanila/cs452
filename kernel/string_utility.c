@@ -1,4 +1,5 @@
 #include "string_utility.h"
+#include "logging.h"
 
 void _strcpy(char* dest, const char* src)
 {
@@ -54,11 +55,13 @@ void itos(int i, char* s)
 
 	int is_negative = i < 0; // Offset to store '-'
 	s[len + is_negative] = 0;
+	char* null_terminator = &s[len + is_negative];
 	s += (len + is_negative) - 1;
 
 	curr = i;
 	while(len > 0)
 	{
+		assert(s != null_terminator);
 		*s = '0' + curr % 10;
 		s--;
 		curr /= 10;
@@ -67,7 +70,11 @@ void itos(int i, char* s)
 
     // If i is negative, the above loop will have 
 	// stopped 1 element before the first.
+	assert(s - 1 != null_terminator);
     if(i < 0) *(s-1) = '-';
+
+	// Suppress pedantic
+	null_terminator++;
 }
 
 int stoi(char* s)

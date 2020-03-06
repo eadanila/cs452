@@ -5,16 +5,29 @@
 #define INVALID_ARGUMENT -2
 
 #include "tc_server.h"
+#include "track.h"
 
 // NOTE: This is an initial interface meant to satisfy the requirements 
 //       for TC1 and may expand/change for TC2.
 
 typedef struct track_position TrackPosition;
+typedef struct train_path_plan TrainPathPlan;
 
 struct track_position
 {
-    char track_node_number;
+    int node;
     int offset;
+};
+
+struct train_path_plan
+{
+    TrackPosition pos;
+    int path[TRACK_MAX];
+    int path_distance[TRACK_MAX];
+    int path_len;
+
+    // Index in the path 
+    int current_node;
 };
 
 // Offset in mm
