@@ -37,10 +37,10 @@ int main(int argc, char *argv[]) {
     // which are written to by the kernel and represent the time spent idle.
     // idle_task running is used solely to calculate the idle time and
     // halt the processor.
-    int idle_task_id = kcreate(7, (uint)idle_task);
+    int idle_task_id = kcreate(15, (uint)idle_task);
     DEBUG("Idle task ID: %d", idle_task_id);
-    kcreate(6, (uint)idle_printer);
-    int id = kcreate(3, (uint)umain);
+    kcreate(14, (uint)idle_printer);
+    int id = kcreate(13, (uint)umain);
 
     start_time = 0;
     end_time = 0;

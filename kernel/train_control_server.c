@@ -10,6 +10,7 @@
 #include "track_constants.h"
 #include "sensors.h"
 #include "terminal.h"
+#include "clock_server.h"
 
 #define TARGET_POSITION 1
 #define SET_POSITION 2
@@ -441,7 +442,7 @@ void update_train_states(TrainState* train_state, char* newly_triggered)
     {
         if(newly_triggered[i]) 
         {
-            sensor_triggered = newly_triggered[i];
+            sensor_triggered = i;
             break;
         }
     }
@@ -464,7 +465,9 @@ void train_control_server(void)
     RegisterAs("train_control");
 
     tcid = WhoIs("tc_server");
-    int pid = WhoIs("terminal");
+
+    int cid = WhoIs("clock_server");
+    int pid = WhoIsWait(cid, "terminal");
 
     Create(3, train_control_sensor_state_notifier);
 
@@ -524,7 +527,7 @@ void train_control_server(void)
     //     // print("type: %d\n\r", (int)track[plan.path[i]].type);
     //     if(track[plan.path[i]].type == NODE_SENSOR) print("%s ", track[plan.path[i]].name);
     // }
-
+    int cnt = 0;
     for(;;)
     {
         // Receive clock server request
@@ -554,6 +557,9 @@ void train_control_server(void)
                 update_train_states(&train_state, newly_triggered_sensors);
                 
                 Reply(sender, reply_msg, 0);
+
+                TPrintAt(pid, 0, 40, "train_location: %s   ", track[train_state.node].name);
+                TPrintAt(pid, 0, 41, "cnt: %d", cnt++);
                 break;
         }
     }

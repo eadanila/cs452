@@ -26,6 +26,9 @@
 #define TERMINAL_TICK_NOTIFIER_DELAY 5
 #define TERMINAL_NOTIFIER_PRIORITY 4
 
+#define TPRINT_COMMAND 1
+#define TPRINTAT_COMMAND 2
+
 // The following variables are used by functions only called by the terminal task.
 // Although "global", these variables are accessed by no other task
 // than the terminal task and thus do not violate memory exclusivity.
@@ -65,14 +68,36 @@ void TPrint(int tid, char* str, ... )
 	va_list va;
 	va_start(va, str);
 
-    char message[MAX_TPRINT_SIZE];
+    char message[MAX_TPRINT_SIZE + 1];
     char reply[1];
+
+	message[0] = TPRINT_COMMAND;
 
 	// If formatted string is longer than MAX_TPRINT_SIZE,
 	// it should be truncated.
-	_format_string(message, MAX_TPRINT_SIZE, str, va);
+	_format_string(message + 1, MAX_TPRINT_SIZE, str, va);
 
-    Send(tid, message, MAX_TPRINT_SIZE, reply, 0);
+    Send(tid, message, MAX_TPRINT_SIZE + 1, reply, 0);
+
+	va_end(va);
+}
+
+void TPrintAt(int tid, int x, int y, char* str, ...)
+{
+	va_list va;
+	va_start(va, str);
+
+    char message[MAX_TPRINT_SIZE + 1];
+    char reply[1];
+
+	message[0] = TPRINTAT_COMMAND;
+
+	// If formatted string is longer than MAX_TPRINT_SIZE,
+	// it should be truncated.
+	int new_start = format_string(message + 1, MAX_TPRINT_SIZE, "\033[%d;%dH", y, x);
+	_format_string(message + 1 + new_start, MAX_TPRINT_SIZE - new_start, str, va);
+	
+    Send(tid, message, MAX_TPRINT_SIZE + 1, reply, 0);
 
 	va_end(va);
 }
@@ -478,6 +503,8 @@ void track_initialized_notifier()
 
 void terminal(void)
 {
+	RegisterAs("terminal");
+
 	unsigned int* track_a_straight[] = 
 	{
 	L"──────────────────── ╭─────────────────────────────────────────────────────────────────────────────╮ \n\r",
@@ -685,8 +712,9 @@ void terminal(void)
 	pid = WhoIs("com2");
 	com1_id = WhoIs("com1");
 	int csid = WhoIs("clock_server");
+	int train_control_server_id = WhoIs("train_control");
+	train_control_server_id += 0; // Suppress pedantic
 
-	RegisterAs("terminal");
 	int sender;
 
 	// Initial output setup
@@ -758,7 +786,7 @@ void terminal(void)
 
     for(;;)
     {
-		Receive(&sender, msg, MAX_TPRINT_SIZE);
+		Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
 
 		// Message received was a new char from the user
 		if(sender == input_notifier_id)
@@ -871,9 +899,23 @@ void terminal(void)
 		}
 		else // Task requested to print to terminal
 		{
-			// For now, just print it.
-			// TODO Move prints from other tasks to a designated scrolling area.
-			UPrint(pid, msg);
+			if(msg[0] == TPRINT_COMMAND)
+			{
+				// For now, just print it.
+				// TODO Move TPrints from other tasks to a designated scrolling area.
+				UPrint(pid, msg + 1);
+			}
+			else if (msg[0] == TPRINTAT_COMMAND)
+			{
+				// Print the message, has the location encoded in it already.
+				UPrint(pid, msg + 1);
+			}
+			else
+			{
+				// Unrecognized command sent!
+				assert(0)
+			}
+			
 		}
 
 		// Reprint switch states if they have changed

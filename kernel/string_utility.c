@@ -177,12 +177,16 @@ void si2a( int num, char *bf ) {
 
 // Functions the same as bwformat except "prints" to the buffer "result"
 // instead of directly to terminal.  "size" represents the size of the
-// buffer. Returns non-zero if space in the buffer ran out, in which case
+// buffer. Returns a positive integer representing the index in the 
+// buffer where the newly formatted string ends (the location of the null 
+// terminator). Returns -1 if space in the buffer ran out, in which case
 // the "printed" string has been truncated.
 int _format_string ( char* result, int size, char *fmt, va_list va ) {
 	char bf[12];
 	char ch, lz;
 	int w;
+
+	char* result_start_addr = result;
 
 	while ( ( ch = *(fmt++) ) ) {
 		if ( ch != '%' )
@@ -236,8 +240,13 @@ int _format_string ( char* result, int size, char *fmt, va_list va ) {
 	}
 	
 	// Return an error if the result buffer provided was not large enough
-	if(result != 0) *result = 0;
-	return result == 0;
+	if(result != 0) 
+	{
+		*result = 0;
+		return result - result_start_addr;
+	}
+
+	return -1;
 }
 
 int format_string ( char* result, int size, char *fmt, ... )
