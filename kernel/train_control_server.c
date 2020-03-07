@@ -8,11 +8,15 @@
 #include "sensors.h"
 #include "timer.h"
 #include "track_constants.h"
+#include "sensors.h"
+#include "terminal.h"
 
 #define TARGET_POSITION 1
 #define SET_POSITION 2
 #define GET_POSITION 3
 #define SET_TRACK 4
+
+#define SENSOR_DUMP 5
 
 #define INFINITY __INT_MAX__
 #define UNREACHABLE -1
@@ -20,6 +24,9 @@
 
 #define TRACK_A_SIZE 144
 #define TRACK_B_SIZE 140
+
+#define TRAIN_SPEED_MAX 13
+#define TRAIN_SPEED_MIN 8
 
 int TargetPosition(int tid, char train_id, char track_node_number, int offset)
 {
@@ -43,7 +50,7 @@ int SetPosition(int tid, char train_id, char sensor_id1, char sensor_id2)
     return 0;
 }
 
-int GetPosition(int tid, char train_id, TrackPosition* tp)
+int GetPosition(int tid, char train_id, TrainState* tp)
 {
     return 0;
 }
@@ -304,8 +311,12 @@ void initialize()
 
 // NOTE: Assuming dest_offset does not reach the node before or after it.
 // TODO Add an error return for this ^
-void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int dest_offset)
+// A shortest path from node to dest must exist.
+void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset)
 {
+    p->state = train_state;
+    int node = train_state->node;
+
     assert (node != dest);
     int* previous;
     int* distances;
@@ -331,8 +342,8 @@ void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int 
             break;
     }
     
-    p->pos.node = node;
-    p->pos.offset = offset;
+    // p->state.node = node;
+    // p->state.offset = offset;
     
     assert(previous[0] != UNREACHABLE);
 
@@ -343,14 +354,17 @@ void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int 
     int total_distance = distances[dest];
 
     int path_nodes = 0;
-    while(prev != node)
+
+    assert(previous[prev] != -1); // Creating path between nodes that are unreachable
+
+    while(prev != -1)
     {
         p->path[path_nodes] = prev;
         prev = previous[prev];
 
         path_nodes++;
     }
-    p->path[path_nodes] = prev; // Put origin in the path
+    p->path[path_nodes] = node; // Put origin in the path
 
     p->path_len = path_nodes + 1;
 
@@ -369,15 +383,74 @@ void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int 
 
     p->current_node = 0;
 
-    assert(p->pos.node == p->current_node);
+    assert(p->state->node == p->path[p->current_node]);
 
     // Apply dest offsets to all distances, and remove last node if negative offset.
     for(int i = 0; i != p->path_len; i++) p->path_distance[i] += dest_offset;
 
     // Remove nodes in path left with negative distances (if offset was negative, some nodes may be rendered useless)
-    while(p->path_len - 1 >=0 && p->path_distance[ p->path_len - 1 ] < 0) p->path_len--;
+    while(p->path_len - 1 >= 0 && p->path_distance[ p->path_len - 1 ] < 0) p->path_len--;
 
     assert(p->path_len > 0);
+}
+
+TrainState create_train_state(int node, int offset, int speed)
+{
+    TrainState result;
+    result.node = node;
+    result.offset = offset;
+    result.speed = speed;
+
+    return result;
+}
+
+// Continously spins for sensor data from the tc server and sends it 
+// to the train control server. 
+void train_control_sensor_state_notifier()
+{
+    // SHARED MEMORY FIX
+	int tcid = WhoIs("tc_server");
+	int tid = WhoIs("train_control");
+
+	char msg[11];
+	char reply[1];
+
+    msg[0] = SENSOR_DUMP;
+
+    InitComplete(tcid);
+
+	for(;;)
+	{
+		GetSensors(tcid, msg + 1);
+        // panic();
+		// Notify server that a sensor dump was completed
+        Send(tid, msg, 11, reply, 0);
+	}
+}
+
+// In the future this will be an array of train_states
+// Does not interpolate, simple snaps train into position based on sensor hits.
+void update_train_states(TrainState* train_state, char* newly_triggered)
+{
+    int sensor_triggered = -1;
+    // For now assume only one train can trigger.  In the future will use train states distances
+    // from each sensor to figure out which train state to update.
+
+    // Find newly triggered sensor
+    for(int i = 0; i != MAX_SENSOR_NUMBER; i++)
+    {
+        if(newly_triggered[i]) 
+        {
+            sensor_triggered = newly_triggered[i];
+            break;
+        }
+    }
+
+    // No new sensors triggered, dont update states based on sensor
+    if(sensor_triggered == -1) return;
+
+    // Update train position to this sensor
+    train_state->node = sensor_triggered;
 }
 
 // For now assume using the following train and the following start position 
@@ -391,9 +464,12 @@ void train_control_server(void)
     RegisterAs("train_control");
 
     tcid = WhoIs("tc_server");
+    int pid = WhoIs("terminal");
+
+    Create(3, train_control_sensor_state_notifier);
 
     int sender;
-    char msg[9];
+    char msg[11];
     char reply_msg[1];
 
     // UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
@@ -428,14 +504,31 @@ void train_control_server(void)
     int source = sensor_string_index(ORIGIN);
     int dest = sensor_string_index(DESTINATION);
 
+    track = tracka;
+    track_id = 'A';
+
+    // Initialize single train state 
+    TrainState train_state = create_train_state(source, 0, 0);
+
     TrainPathPlan plan;
-    init_train_path_plan(&plan, source, 0, dest, 0);
-    // _target_position(CONTROLLED_TRAIN, DESTINATION, 0);
+    init_train_path_plan(&plan, &train_state, dest, 0);
+
+    // Parsed sensor states 
+    char sensor_states[MAX_SENSOR_NUMBER];
+    char newly_triggered_sensors[MAX_SENSOR_NUMBER];
+
+    // // Verify path is correct.
+    // print("path length %d", plan.path_len);
+    // for(int i = 0; i != plan.path_len; i++) 
+    // {
+    //     // print("type: %d\n\r", (int)track[plan.path[i]].type);
+    //     if(track[plan.path[i]].type == NODE_SENSOR) print("%s ", track[plan.path[i]].name);
+    // }
 
     for(;;)
     {
         // Receive clock server request
-        Receive(&sender, msg, 6);
+        Receive(&sender, msg, 11);
 
         // Execute the command encoded in the request
         switch(msg[0])
@@ -453,6 +546,13 @@ void train_control_server(void)
                 break;
             case SET_POSITION:
 
+                Reply(sender, reply_msg, 0);
+                break;
+
+            case SENSOR_DUMP:
+                parse_sensors(msg + 1, sensor_states, newly_triggered_sensors);
+                update_train_states(&train_state, newly_triggered_sensors);
+                
                 Reply(sender, reply_msg, 0);
                 break;
         }

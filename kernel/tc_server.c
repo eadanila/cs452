@@ -345,7 +345,9 @@ void tc_server(void)
 
     int new_time; // Used to calculate delta time between ticks.
     int time = Time(csid);
-    int waiting_for_sensor_dump = -1; // TODO Add support for multiple waiting for sensor commands.
+
+    int waiting_for_sensor_dump_size = 0;
+    int waiting_for_sensor_dump[MAX_TASKS_ALLOWED];
 
     TrackConstants track_constants = create_track_constants();
 
@@ -397,6 +399,7 @@ void tc_server(void)
             case INIT_COMPLETE_COMMAND:
                 waiting_for_init[waiting_for_init_count] = sender;
                 waiting_for_init_count++;
+                break;
 
             case NOTIFIER_STARTED:
                 // Do nothing
@@ -408,6 +411,7 @@ void tc_server(void)
                 //      return a corresponding error message.
                 print("----- %d ----- ", msg[0]);
                 assert(0);
+                break;
         }
 
         // Initialization has completed
@@ -441,13 +445,17 @@ void tc_server(void)
                 break;
 
             case SENSOR_DUMP:
-                assert(waiting_for_sensor_dump != -1);
+                assert(waiting_for_sensor_dump_size > 0);
 
                 // Sensor dump notifier finished obtaining the requested sensor dump.
-                // Reply to the waiting task with the data.
+                // Reply to waiting tasks with the data.
                 // TODO Have sensor_dump_notifer respond to the task directly instead.
-                Reply(waiting_for_sensor_dump, msg + 1, 10);
-                waiting_for_sensor_dump = -1;
+
+                while(waiting_for_sensor_dump_size > 0)
+                {
+                    waiting_for_sensor_dump_size--;
+                    Reply(waiting_for_sensor_dump[waiting_for_sensor_dump_size], msg + 1, 10);
+                }
                 break;
 
             case NOTIFIER_STARTED:
@@ -515,16 +523,23 @@ void tc_server(void)
                 break;
 
             case GET_SENSORS_COMMAND:
-                assert(waiting_for_sensor_dump == -1); // Currently, only one task should be requesting a sensor dump at a time.
-                waiting_for_sensor_dump = sender;
+                // assert(waiting_for_sensor_dump == -1); // Currently, only one task should be requesting a sensor dump at a time.
+                waiting_for_sensor_dump[waiting_for_sensor_dump_size] = sender;
+                waiting_for_sensor_dump_size++;
 
-                // Wake up sensor_dump_notifier. It will send a sensor dump when finished.
-                Reply(sensor_dump_notifier_id, reply_msg, 0);
+                if(waiting_for_sensor_dump_size == 1)
+                {
+                    // Wake up sensor_dump_notifier if this is the first request. 
+                    // It will send a sensor dump when finished.
+                    Reply(sensor_dump_notifier_id, reply_msg, 0);
+                }
+
                 break;
 
             case INIT_COMPLETE_COMMAND:
                 // By virtue of being in this loop, initialization has been completed. Unblock the task immediately.
                 Reply(sender, msg, 0);
+                break;
         }
     }
 }

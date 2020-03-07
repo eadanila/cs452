@@ -8,7 +8,7 @@ typedef unsigned int uint;
 #define DEBUG_ON 0
 
 #define MEMORY_END 0x1FE0000 // k_stack base - 128KiB
-#define MEMORY_START 0x0100000
+#define MEMORY_START 0x0200000
 #define TASK_MEMORY_SIZE 0x20000 // 128 KiB
 #define MAX_TASKS_ALLOWED 128
 #define MIN_PRIORITY 7

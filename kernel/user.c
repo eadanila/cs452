@@ -381,10 +381,10 @@ void umain(void)
     name_server_id = Create(0, name_server);
     Create(0, clock_server);
     create_uart_servers();
-    Create(2, tc_server);
-    Create(4, terminal);
+    Create(3, tc_server);
     // Create(3, empty_spinner);
-    Create(3, train_control_server);
+    Create(4, train_control_server);
+    Create(5, terminal);
 
     // uart_send_byte(UART1, 16);
     // AwaitEvent(EVENT_UART1_CTS_LOW);

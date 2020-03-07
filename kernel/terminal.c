@@ -24,6 +24,7 @@
 #define MAX_TPRINT_SIZE 1024
 
 #define TERMINAL_TICK_NOTIFIER_DELAY 5
+#define TERMINAL_NOTIFIER_PRIORITY 4
 
 // The following variables are used by functions only called by the terminal task.
 // Although "global", these variables are accessed by no other task
@@ -376,7 +377,7 @@ void input_notifier()
 // Will eventually be moved to notify the task controlling the trains.
 void sensor_state_notifier()
 {
-	tcid = WhoIs("tc_server");
+	int tcid = WhoIs("tc_server");
 	int tid = WhoIs("terminal");
 	int cid = WhoIs("clock_server");
 	while(cid < 0) cid = WhoIs("clock_server");
@@ -463,7 +464,7 @@ void terminal_tick_notifier()
 // Notify the terminal when track initialization is complete
 void track_initialized_notifier()
 {
-	tcid = WhoIs("tc_server");
+	int tcid = WhoIs("tc_server");
 	int tid = WhoIs("terminal");
 
 	char msg[1];
@@ -697,10 +698,10 @@ void terminal(void)
 	for(int i = 0; i != 16; i++) sensor_states[i] = -1;
 	for(int i = 0; i != 128; i++) all_sensor_states[i] = 0;
 
-	int input_notifier_id = Create(3, input_notifier);
+	int input_notifier_id = Create(TERMINAL_NOTIFIER_PRIORITY, input_notifier);
 	int sensor_state_notifier_id = -1; // Created after initialization
-	int terminal_tick_notifer_id = Create(3, terminal_tick_notifier);
-	int track_initialized_notifier_id = Create(3, track_initialized_notifier);
+	int terminal_tick_notifer_id = Create(TERMINAL_NOTIFIER_PRIORITY, terminal_tick_notifier);
+	int track_initialized_notifier_id = Create(TERMINAL_NOTIFIER_PRIORITY, track_initialized_notifier);
 
 	// Debugging spinner variables
 	// TODO Move spinner to a new task entirely? Since timer currently accomplishes same task.
@@ -863,7 +864,7 @@ void terminal(void)
 		}
 		else if (sender == track_initialized_notifier_id)
 		{
-			sensor_state_notifier_id = Create(3, sensor_state_notifier);
+			sensor_state_notifier_id = Create(TERMINAL_NOTIFIER_PRIORITY, sensor_state_notifier);
 			track_initialized = 1;
 			MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
 			Print(pid, "                ");

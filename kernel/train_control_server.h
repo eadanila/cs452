@@ -10,18 +10,19 @@
 // NOTE: This is an initial interface meant to satisfy the requirements 
 //       for TC1 and may expand/change for TC2.
 
-typedef struct track_position TrackPosition;
+typedef struct train_state TrainState;
 typedef struct train_path_plan TrainPathPlan;
 
-struct track_position
+struct train_state
 {
     int node;
     int offset;
+    int speed;
 };
 
 struct train_path_plan
 {
-    TrackPosition pos;
+    TrainState* state;
     int path[TRACK_MAX];
     int path_distance[TRACK_MAX];
     int path_len;
@@ -34,7 +35,7 @@ struct train_path_plan
 int TargetPosition(int tid, char train_id, char track_node_number, int offset);
 int SetPosition(int tid, char train_id, char sensor_id1, char sensor_id2);
 int SetTrack(int tid, char track_id);
-int GetPosition(int tid, char train_id, TrackPosition* tp);
+int GetPosition(int tid, char train_id, TrainState* tp);
 
 void train_control_server(void);
 
