@@ -1,15 +1,10 @@
 #ifndef TC_SERVER_H
 #define TC_SERVER_H
 
-#define STRAIGHT 33
-#define CURVED 34
+#include "track_constants.h"
 
 #define INVALID_TC_SERVER -1
 #define INVALID_ARGUMENT -2
-
-#define TRAIN_COUNT 6
-#define SWITCH_COUNT 22
-#define MAX_TRAIN_NUMBER 79
 
 // Atomic command to be sent to the UART1 server associated with 
 // a delay to be waited until another command is executed on its queue.

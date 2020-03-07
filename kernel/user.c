@@ -369,6 +369,13 @@ void clock_server_error_test()
     print("Should be: TIME, Got %d\n\r", DelayUntil(cs, 23));
 }
 
+void empty_spinner()
+{
+    int s = 0;
+    s++;
+    for(;;){}
+}
+
 void umain(void)
 {
     name_server_id = Create(0, name_server);
@@ -376,6 +383,7 @@ void umain(void)
     create_uart_servers();
     Create(2, tc_server);
     Create(4, terminal);
+    // Create(3, empty_spinner);
     Create(3, train_control_server);
 
     // uart_send_byte(UART1, 16);

@@ -6,6 +6,8 @@
 #include "track.h"
 #include "logging.h"
 #include "sensors.h"
+#include "timer.h"
+#include "track_constants.h"
 
 #define TARGET_POSITION 1
 #define SET_POSITION 2
@@ -13,6 +15,7 @@
 #define SET_TRACK 4
 
 #define INFINITY __INT_MAX__
+#define UNREACHABLE -1
 #define NEIGHBOR_MAX 3
 
 #define TRACK_A_SIZE 144
@@ -64,6 +67,7 @@ int SetTrack(int tid, char track_id)
 // which only train_control_server calls.
 char track_id;
 track_node* track;
+TrackConstants track_constants;
 
 int tcid;
 track_node tracka[TRACK_MAX];
@@ -76,6 +80,18 @@ int shortest_paths_b[TRACK_MAX][TRACK_MAX];
 // Distances for above paths
 int shortest_distances_a[TRACK_MAX][TRACK_MAX];
 int shortest_distances_b[TRACK_MAX][TRACK_MAX];
+
+// UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
+    // track_node* tracka;
+    // track_node* trackb;
+
+    // // For each node, a complete path 
+    // int (*shortest_paths_a)[TRACK_MAX];
+    // int (*shortest_paths_b)[TRACK_MAX];
+
+    // // Distances for above paths
+    // int (*shortest_distances_a)[TRACK_MAX];
+    // int (*shortest_distances_b)[TRACK_MAX];
 
 void _set_position(char train_id, char sensor_id1, char sensor_id2)
 {
@@ -100,6 +116,8 @@ int link_cost(track_node* track, int u, int v) // u -> v
     // SENSORs are reverse of their opposite direction SENSOR
     // ENTER AND EXIT are reverse of eachother
 
+    int cost = INFINITY;
+
     switch(track[u].type)
     {
         case NODE_EXIT: // No edges
@@ -112,7 +130,7 @@ int link_cost(track_node* track, int u, int v) // u -> v
         case NODE_MERGE:
         case NODE_ENTER: // 1 edge
             if(track + v == track[u].edge[DIR_AHEAD].dest) 
-                return track[u].edge[DIR_AHEAD].dist;
+                cost = track[u].edge[DIR_AHEAD].dist;
 
             // if(track + v == track[u].reverse) 
             //     // The reverse track may be any type of track
@@ -127,10 +145,10 @@ int link_cost(track_node* track, int u, int v) // u -> v
 
         case NODE_BRANCH: // 2 edges
             if(track + v == track[u].edge[DIR_STRAIGHT].dest) 
-                return track[u].edge[DIR_STRAIGHT].dist;
+                cost = track[u].edge[DIR_STRAIGHT].dist;
 
             if(track + v == track[u].edge[DIR_CURVED].dest) 
-                return track[u].edge[DIR_CURVED].dist;
+                cost = track[u].edge[DIR_CURVED].dist;
 
             // if(track + v == track[u].reverse) 
             //     // The reverse track may be any type of track
@@ -143,11 +161,13 @@ int link_cost(track_node* track, int u, int v) // u -> v
             break;
     }
 
-    return INFINITY;
+    // print("link end");
+    return cost;
 }
 
 void get_neighbors(track_node* track, int u, int* neighbors, int* size)
 {
+    *size = 0;
     switch(track[u].type)
     {
         case NODE_EXIT: // No edges
@@ -189,17 +209,17 @@ int is_contained(int element, int* list, int size)
 // NOTE: Assumes switches may be switched to obtain shortest path.
 void shortest_path(track_node* track, const int track_node_count, int source, int* distance, int* previous)
 {
-    // In this implementation, assume every node can be reached from every other node
-
     // Initialize distance and previous arrays
     for(int i = 0; i != TRACK_MAX; i++)
     {
         distance[i] = INFINITY;
-        previous[i] = -1;
+        previous[i] = UNREACHABLE;
     } 
 
-    int N[TRACK_MAX];
-    N[0] = source;
+    int N_visited[TRACK_MAX];
+
+    for(int i = 0; i != TRACK_MAX; i++) N_visited[i] = 0;
+    N_visited[source] = 1;
     int N_size = 1;
 
     int neighbors[NEIGHBOR_MAX];
@@ -209,25 +229,29 @@ void shortest_path(track_node* track, const int track_node_count, int source, in
 
     for(int i = 0; i != neighbors_size; i++) distance[neighbors[i]] = link_cost(track, source, neighbors[i]);
 
+    // Exit piece chosen as source.
+    if(neighbors_size == 0) return;
+    
     for(;;)
     {
-        int w = -1;
+        int w = UNREACHABLE;
         int w_dist = INFINITY;
 
         // Find w not in N' with minimum D(u,w)
         for(int i = 0; i != track_node_count; i++)
         {
-            if(!is_contained(i, N, N_size) && distance[i] < w_dist)
+            // N[i] == 0 means i is not contained in N
+            if(N_visited[i] == 0 && distance[i] <= w_dist )
             {
                 w = i;
                 w_dist = distance[i];
             }
         }
         
-        assert(w != -1);
+        assert(w != UNREACHABLE);
 
         // Add w to N'
-        N[N_size] = w;
+        N_visited[w] = 1;
         N_size++;
 
         int w_neighbors[NEIGHBOR_MAX];
@@ -239,29 +263,33 @@ void shortest_path(track_node* track, const int track_node_count, int source, in
         {
             int v = w_neighbors[i];
             
-            if(is_contained(v, N, N_size)) continue;
+            // If v is contained in N
+            if(N_visited[v] == 1) continue;
 
-            if(distance[w] + link_cost(track, w, v) < distance[v])
+            int w_to_v_cost = link_cost(track, w, v);
+            if(distance[w] + w_to_v_cost < distance[v])
             {
-                distance[v] = distance[w] + link_cost(track, w, v);
+                distance[v] = distance[w] + w_to_v_cost;
                 previous[v] = w;
             }
         }
 
         // If all nodes visited, we're done.
         if(N_size == track_node_count) break;
-    }
+    } 
 }
 
 // Compute all shortest paths between all nodes and their distances
 void compute_shortest_paths()
 {
-    for(int i = 0; i != TRACK_A_SIZE; i++)
-                // (track_node* track, const int track_node_count, int source, int* distance, int* previous)
+    // Takes roughly 750 ms
+    // int start = read_debug_timer();
+    for(int i = 0; i != TRACK_A_SIZE; i++) 
         shortest_path(tracka, TRACK_A_SIZE, i, shortest_distances_a[i], shortest_paths_a[i]);
 
-    for(int i = 0; i != TRACK_B_SIZE; i++)
+    for(int i = 0; i != TRACK_B_SIZE; i++) 
         shortest_path(trackb, TRACK_B_SIZE, i, shortest_distances_b[i], shortest_paths_b[i]);
+    // print(" time %d ", read_debug_timer() - start);
 }
 
 void initialize()
@@ -306,7 +334,7 @@ void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int 
     p->pos.node = node;
     p->pos.offset = offset;
     
-    assert(previous[0] != -1);
+    assert(previous[0] != UNREACHABLE);
 
     // TODO Precompute the following?
 
@@ -335,7 +363,7 @@ void init_train_path_plan(TrainPathPlan* p, int node, int offset, int dest, int 
     }
 
     // Create distance array, invert distances to make them 
-    // distance left instead of distance covered.
+    // distance remaining instead of distance covered.
     for(int i = 0; i != p->path_len; i++)
         p->path_distance[i] = total_distance - distances[p->path[i]];
 
@@ -367,6 +395,29 @@ void train_control_server(void)
     int sender;
     char msg[9];
     char reply_msg[1];
+
+    // UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
+        // track_node _tracka[TRACK_MAX];
+        // track_node _trackb[TRACK_MAX];
+
+        // // For each node, a complete path 
+        // int _shortest_paths_a[TRACK_MAX][TRACK_MAX];
+        // int _shortest_paths_b[TRACK_MAX][TRACK_MAX];
+
+        // // Distances for above paths
+        // int _shortest_distances_a[TRACK_MAX][TRACK_MAX];
+        // int _shortest_distances_b[TRACK_MAX][TRACK_MAX];
+
+        // // Set globals for use in helper functions
+        // // Note that these globals are not used by any other task than this one.
+        // tracka = _tracka;
+        // trackb = _trackb;
+        // shortest_paths_a     = _shortest_paths_a;
+        // shortest_paths_b     = _shortest_paths_b;
+        // shortest_distances_a = _shortest_distances_a;
+        // shortest_distances_b = _shortest_distances_b;
+
+    track_constants = create_track_constants();
 
     // State variables
     track_id = 0;
