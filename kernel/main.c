@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
 
     kcleanup();
 
+    print("\033[2J\033[H"); // Clear screen and reset cursor
     print("Kernel: exiting\n\r");
     return 0;
 }
