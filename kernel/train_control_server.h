@@ -3,6 +3,7 @@
 
 #define INVALID_TRAIN_CONTROL_SERVER -1
 #define INVALID_ARGUMENT -2
+#define NO_PATH_EXISTS -3
 
 #include "tc_server.h"
 #include "track.h"

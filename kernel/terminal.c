@@ -232,6 +232,12 @@ int parse_int(char** command)
 	return stoi(command_int);
 }
 
+void print_invalid_path()
+{
+	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
+	Print(pid, "Path from source to destination does not exist!\n\r");
+}
+
 void print_invalid_switch_track()
 {
 	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
@@ -386,7 +392,20 @@ void process_command()
 		if(command_p == 0) print_invalid_argument();
 		if(!is_valid_speed(t_target_speed)) print_invalid_argument();
 
-		InitTrain(train_control_server_id, t_number, t_node, t_target_node, t_target_speed);
+		if(InitTrain(train_control_server_id, t_number, t_node, t_target_node, t_target_speed) == NO_PATH_EXISTS)
+			print_invalid_path();
+	}
+	else if (is_command("sl", &command_p)) 
+	{
+		// Inner loop is the same regardless of track!
+		SwitchTrackAsync(tcid, 10, STRAIGHT);
+		SwitchTrackAsync(tcid, 13, STRAIGHT);
+		SwitchTrackAsync(tcid, 16, STRAIGHT);
+		SwitchTrackAsync(tcid, 17, STRAIGHT);
+		SwitchTrackAsync(tcid, 8,  CURVED);
+		SwitchTrackAsync(tcid, 9,  CURVED);
+		SwitchTrackAsync(tcid, 14, CURVED);
+		SwitchTrackAsync(tcid, 15, CURVED);
 	}
 	else
 	{
@@ -976,12 +995,12 @@ void terminal(void)
 			switch_updated = 0;
 		}
 
-		MoveCursor(pid, 0, 48);
-		Print(pid, "tc switch buffer end = %d             \n\r", com1_queue_end);
-		MoveCursor(pid, 0, 49);
-		Print(pid, "tc switch buffer start = %d             \n\r", com1_queue_start);
-		MoveCursor(pid, 0, 50);
-		Print(pid, "tc switch buffer size = %d             \n\r", com1_queue_size);
+		// MoveCursor(pid, 0, 48);
+		// Print(pid, "tc switch buffer end = %d             \n\r", com1_queue_end);
+		// MoveCursor(pid, 0, 49);
+		// Print(pid, "tc switch buffer start = %d             \n\r", com1_queue_start);
+		// MoveCursor(pid, 0, 50);
+		// Print(pid, "tc switch buffer size = %d             \n\r", com1_queue_size);
 		
 		Reply(sender, msg, 0);
     }

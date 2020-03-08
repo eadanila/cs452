@@ -22,7 +22,7 @@
 #define NEW_TIME 6
 #define EVENT_OCCURED 7
 
-#define INFINITY __INT_MAX__
+#define INFINITY 1000000 //CANNOT BE INT MAX SINCE IT NEEDS TO BE ADDED TO 
 #define UNREACHABLE -1
 #define NEIGHBOR_MAX 3
 
@@ -63,10 +63,10 @@ int InitTrain(int tid, char train_id, char original_track_node, char track_node_
     message[4] = speed_id;
 
     // If tid is not the task id of an existing task.
-    if(Send(tid, message, 5, reply, 0) == -1) 
-        return INVALID_TC_SERVER;
+    if(Send(tid, message, 5, reply, 1) == -1) 
+        return INVALID_TRAIN_CONTROL_SERVER;
 
-    return 0;
+    return (signed char)reply[0];
 }
 
 int SetPosition(int tid, char train_id, char sensor_id1, char sensor_id2)
@@ -97,7 +97,9 @@ int SetTrack(int tid, char track_id)
 // State variables, not accessed by any tasks other than train_control_server process and functions
 // which only train_control_server calls.
 static char track_id;
-static track_node* track;
+static track_node* current_track;
+static int (*shortest_paths)[TRACK_MAX];
+static int (*shortest_distances)[TRACK_MAX];
 static TrackConstants track_constants;
 
 static int tcid;
@@ -213,7 +215,6 @@ void get_neighbors(track_node* track, int u, int* neighbors, int* size)
         case NODE_EXIT: // No edges
             // neighbors[0] = (int)(track[u].reverse - track);
             // *size += 1;
-            return;
             break;
 
         case NODE_SENSOR:
@@ -222,7 +223,6 @@ void get_neighbors(track_node* track, int u, int* neighbors, int* size)
             neighbors[0] = (int)(track[u].edge[DIR_AHEAD].dest - track);
             // neighbors[1] = (int)(track[u].reverse - track);
             *size += 1;
-            return;
             break;
 
         case NODE_BRANCH: // 2 edges
@@ -230,7 +230,6 @@ void get_neighbors(track_node* track, int u, int* neighbors, int* size)
             neighbors[1] = (int)(track[u].edge[DIR_CURVED].dest - track);
             // neighbors[2] = (int)(track[u].reverse - track);
             *size += 2;
-            return;
             break;
 
         case NODE_NONE:
@@ -263,9 +262,11 @@ void shortest_path(track_node* track, const int track_node_count, int source, in
     int N_size = 1;
 
     int neighbors[NEIGHBOR_MAX];
-    int neighbors_size = 0;
+    int neighbors_size = -1;
 
     get_neighbors(track, source, neighbors, &neighbors_size);
+
+    assert(neighbors_size != -1)
 
     for(int i = 0; i != neighbors_size; i++) distance[neighbors[i]] = link_cost(track, source, neighbors[i]);
 
@@ -288,6 +289,8 @@ void shortest_path(track_node* track, const int track_node_count, int source, in
             }
         }
         
+        // This means all w not in N' are unreachable, so we're finished.
+        // if(w_dist == INFINITY) return;
         assert(w != UNREACHABLE);
 
         // Add w to N'
@@ -295,8 +298,9 @@ void shortest_path(track_node* track, const int track_node_count, int source, in
         N_size++;
 
         int w_neighbors[NEIGHBOR_MAX];
-        int w_neighbors_size;
+        int w_neighbors_size = -1;
         get_neighbors(track, w, w_neighbors, &w_neighbors_size);
+        assert(w_neighbors_size != -1);
 
         // For all v not in N' and adjacent to w
         for(int i = 0; i != w_neighbors_size; i++)
@@ -334,6 +338,17 @@ void compute_shortest_paths()
 
 void initialize()
 {
+    for(int i = 0; i != TRACK_MAX; i++)
+    {
+        for(int j = 0; j != TRACK_MAX; j++)
+        {
+            shortest_paths_a[i][j] = UNREACHABLE;
+            shortest_paths_b[i][j] = UNREACHABLE;
+            shortest_distances_a[i][j] = INFINITY;
+            shortest_distances_b[i][j] = INFINITY;
+        }
+    } 
+
     init_tracka(tracka);
     init_trackb(trackb);
 
@@ -354,35 +369,12 @@ void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, i
     int node = train_state->node;
 
     assert (node != dest);
-    int* previous;
-    int* distances;
-    // track_node* track;
+    int* previous = shortest_paths[node];
+    int* distances = shortest_distances[node];
 
-    switch(track_id)
-    {
-        case 'A':
-            previous = shortest_paths_a[node];
-            distances = shortest_distances_a[node];
-            // track = tracka;
-            break;
-
-        case 'B':
-            previous = shortest_paths_b[node];
-            distances = shortest_distances_b[node];
-            // track = trackb;
-            break;
-
-        default:
-            assert(0);
-            return; // To stop distances uninitialized error
-            break;
-    }
-    
     // p->state.node = node;
     // p->state.offset = offset;
-    
-    assert(previous[0] != UNREACHABLE);
-
+    assert(previous[dest] != UNREACHABLE);
     // TODO Precompute the following?
 
     // Pull out and reverse paths from previous arrays created by dijkstras.
@@ -520,16 +512,16 @@ int switch_needed(TrainPathPlan* p, char* switch_id, char* direction)
 
     for(int i = p->current_node + 1; i != p->path_len; i++)
     {
-        if(track[p->path[i]].type == NODE_SENSOR)
+        if(current_track[p->path[i]].type == NODE_SENSOR)
         {
             sensors_past++;
             if(sensors_past == 2) return 0;
         }
 
-        track_node* node = &track[p->path[i]];
+        track_node* node = &current_track[p->path[i]];
         if(sensors_past == 1 && node->type == NODE_BRANCH && i != p->path_len-1)
         {
-            track_node* after_branch = &track[p->path[i+1]];
+            track_node* after_branch = &current_track[p->path[i+1]];
 
             *switch_id = node->num;
 
@@ -711,6 +703,7 @@ void train_control_server(void)
     int sender;
     char msg[11];
     char reply_msg[1];
+    reply_msg[0] = 0;
 
     // UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
         // track_node _tracka[TRACK_MAX];
@@ -736,16 +729,12 @@ void train_control_server(void)
     track_constants = create_track_constants();
 
     // State variables
-    track_id = 0;
 
     initialize();
-
-    // // TEMP hardcoded source and dest node indices
-    // int source = sensor_string_index(ORIGIN);
-    // int dest = sensor_string_index(DESTINATION);
-
-    track = tracka;
+    current_track = tracka;
     track_id = 'A';
+    shortest_paths = shortest_paths_a;
+    shortest_distances = shortest_distances_a;
 
     // Initialize single train state 
     train_state.valid = 0;
@@ -803,8 +792,18 @@ void train_control_server(void)
                 
             case SET_TRACK:
                 track_id = msg[1];
-                if(track_id == 'A') track = tracka;
-                else if(track_id == 'B') track = trackb;
+                if(track_id == 'A')
+                {
+                    current_track = tracka;
+                    shortest_paths = shortest_paths_a;
+                    shortest_distances = shortest_distances_a;
+                } 
+                else if(track_id == 'B')
+                {
+                    current_track = trackb;
+                    shortest_paths = shortest_paths_b;
+                    shortest_distances = shortest_distances_b;
+                } 
                 Reply(sender, reply_msg, 0);
                 break;
 
@@ -831,8 +830,19 @@ void train_control_server(void)
                 break;
 
             case INIT_TRAIN:
-                Reply(sender, reply_msg, 0); // Temp reply first to allow prints to terminal
-                _init_train(msg[1], msg[2], msg[3], msg[4]);
+                // Check if path exists
+                assert(shortest_paths == shortest_paths_a || shortest_paths == shortest_paths_b);
+                if(shortest_paths[(unsigned int)msg[2]][(unsigned int)msg[3]] == UNREACHABLE)
+                {
+                    reply_msg[0] = NO_PATH_EXISTS;
+                    Reply(sender, reply_msg, 1);
+                } 
+                else
+                { 
+                    reply_msg[0] = 0;
+                    Reply(sender, reply_msg, 1); // Temp reply first to allow prints to terminal
+                    _init_train(msg[1], msg[2], msg[3], msg[4]);
+                }
 
                 break;
         }
