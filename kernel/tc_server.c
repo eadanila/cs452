@@ -87,6 +87,8 @@ Command remove_command(CommandRingBuffer *b)
 	Command r = b->data[b->start]; 
 	b->start = (b->start + 1)%COMMAND_BUFFER_SIZE;
 	b->size--;
+
+    assert(b->size == b->end - b->start);
 	return r;
 }
 
@@ -143,7 +145,7 @@ void process_command_queue(int tid, CommandRingBuffer* crb, int dt)
 
         if(current_command->delay <= dt)
         {
-            // Execute the command
+            // Commands already been executed
             dt -= current_command->delay;
             
             remove_command(crb);
@@ -326,6 +328,11 @@ void sensor_dump_notifier()
 
 void tc_server(void)
 {
+    // TODO Remove for debugging
+    com1_queue_size = 0;
+    com1_queue_start = 0;
+    com1_queue_end = 0;
+
     RegisterAs("tc_server");
 
     int uid = WhoIs("com1");
@@ -541,6 +548,9 @@ void tc_server(void)
                 Reply(sender, msg, 0);
                 break;
         }
+        com1_queue_size = command_queue.switch_commands.size;
+        com1_queue_end = command_queue.switch_commands.end;
+        com1_queue_start = command_queue.switch_commands.start;
     }
 }
 

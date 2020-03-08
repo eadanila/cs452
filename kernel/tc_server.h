@@ -33,6 +33,10 @@ struct command
     int delay;
 };
 
+int com1_queue_size;
+int com1_queue_start;
+int com1_queue_end;
+
 // NOTE: This is an initial interface meant to satisfy the requirements 
 //       for a0 and will expand/change during TC1 and TC2.
 

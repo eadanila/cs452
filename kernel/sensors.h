@@ -26,13 +26,14 @@ int sensor_string_index(char* s);
 void sensor_name_string(int sensor_index, char* s);
 
 // Parses a 10 byte sensor dump read from a Marklin box. sensor_states and 
-// newly_triggered must be MAX_SENSOR_NUMBER long arrays. sensor_states should be an 
+// newly_triggered must be MAX_SENSOR_NUMBER + 1 long arrays. sensor_states should be an 
 // array of booleans indiciating whether or not each sensor was previously
 // active and will be updated based on the new sensor_bytes. newly_triggered
 // will be populated with booleans indicating which sensor_states have gone from
 // inactive to active.
 // Require: sensor_bytes is a 10 byte long sensor dump
-// Return: integer indicating whether or not any sensors have changed state
+// Return: integer indicating whether or not any sensors have changed state,
+//         this is zero if no sensor has been updated.
 int parse_sensors(char* sensor_bytes, char* sensor_states, char* newly_triggered);
 
 #endif

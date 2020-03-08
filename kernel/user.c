@@ -18,8 +18,8 @@
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
-int recv_tid; int tid;
-int send_size;
+static int recv_tid; 
+static int tid;
 
 void test_recv4(void) {
     char recv_buf[4];

@@ -10,6 +10,7 @@
 #include "tc_server.h"
 #include "timer.h"
 #include "track_display.h"
+#include "train_control_server.h"
 
 #define COMMAND_PRINT_HEIGHT 35
 #define SWITCH_PRINT_HEIGHT 9
@@ -34,34 +35,35 @@
 // than the terminal task and thus do not violate memory exclusivity.
 // These exist to avoid constantly passing large amounts
 // of variables to functions only called by the terminal task.
-char command[MAX_COMMAND_LEN + 1];
-int command_len;
-int last_command_len;
+static char command[MAX_COMMAND_LEN + 1];
+static int command_len;
+static int last_command_len;
 
-int pid;
-int com1_id;
-int tcid;
+static int pid;
+static int com1_id;
+static int tcid;
+static int train_control_server_id;
 
-int track_initialized;
+static int track_initialized;
 
 // TEMP 
 // Variables used to hold senor states, and a queue of the last 16
 // triggered sensors. Declared volatile to avoid the compiler using undefined 
 // functions to optimize operations done on them.
-volatile int sensor_states[16];
-volatile int all_sensor_states[128];
+static volatile int sensor_states[16];
+static volatile int all_sensor_states[128];
 
 // Variables used to store switches triggered and changed. 
 // In the future this responsibility may move the tc_server.
-int switches[SWITCH_COUNT];
-char switch_states[256];
-int switch_updated;
+// static int switches[SWITCH_COUNT];
+static char switch_states[256];
+static int switch_updated;
 
-TrackView track_a_curved_view;
-TrackView track_a_straight_view;
-TrackView track_b_curved_view;
-TrackView track_b_straight_view;
-char active_track;
+static TrackView track_a_curved_view;
+static TrackView track_a_straight_view;
+static TrackView track_b_curved_view;
+static TrackView track_b_straight_view;
+static char active_track;
 
 void TPrint(int tid, char* str, ... )
 {
@@ -364,13 +366,27 @@ void process_command()
 		{
 			active_track = TRACK_A;
 			print_track(pid, track_a_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
+			SetTrack(train_control_server_id, 'A');
 		} 
 		else if(is_arg("B", &command_p))
 		{
 			active_track = TRACK_B;
 			print_track(pid, track_b_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
+			SetTrack(train_control_server_id, 'B');
 		} 
 		else print_invalid_argument();
+	}
+	else if (is_command("it", &command_p)) 
+	{
+		int t_number = parse_int(&command_p);
+		int t_node = parse_int(&command_p);
+		int t_target_node = parse_int(&command_p);
+		int t_target_speed = parse_int(&command_p);
+
+		if(command_p == 0) print_invalid_argument();
+		if(!is_valid_speed(t_target_speed)) print_invalid_argument();
+
+		InitTrain(train_control_server_id, t_number, t_node, t_target_node, t_target_speed);
 	}
 	else
 	{
@@ -711,9 +727,10 @@ void terminal(void)
 
 	pid = WhoIs("com2");
 	com1_id = WhoIs("com1");
+	tcid = WhoIs("tc_server");
+	train_control_server_id = WhoIs("train_control");
+
 	int csid = WhoIs("clock_server");
-	int train_control_server_id = WhoIs("train_control");
-	train_control_server_id += 0; // Suppress pedantic
 
 	int sender;
 
@@ -766,7 +783,8 @@ void terminal(void)
     command_len = 0;
     last_command_len = 0;
     command[0] = 0;
-	char msg[MAX_TPRINT_SIZE];
+	char msg[MAX_TPRINT_SIZE + 1];
+	int msg_size;
 
 	MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
 	Print(pid, "INITIALIZING...");
@@ -786,7 +804,7 @@ void terminal(void)
 
     for(;;)
     {
-		Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
+		msg_size = Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
 
 		// Message received was a new char from the user
 		if(sender == input_notifier_id)
@@ -901,12 +919,19 @@ void terminal(void)
 		{
 			if(msg[0] == TPRINT_COMMAND)
 			{
+				// For sanity, throw a null terminator at the end of the message
+				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
+				else msg[msg_size] = 0;
+
 				// For now, just print it.
 				// TODO Move TPrints from other tasks to a designated scrolling area.
 				UPrint(pid, msg + 1);
 			}
 			else if (msg[0] == TPRINTAT_COMMAND)
 			{
+				// For sanity, throw a null terminator at the end of the message
+				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
+				else msg[msg_size] = 0;
 				// Print the message, has the location encoded in it already.
 				UPrint(pid, msg + 1);
 			}
@@ -950,6 +975,13 @@ void terminal(void)
 
 			switch_updated = 0;
 		}
+
+		MoveCursor(pid, 0, 48);
+		Print(pid, "tc switch buffer end = %d             \n\r", com1_queue_end);
+		MoveCursor(pid, 0, 49);
+		Print(pid, "tc switch buffer start = %d             \n\r", com1_queue_start);
+		MoveCursor(pid, 0, 50);
+		Print(pid, "tc switch buffer size = %d             \n\r", com1_queue_size);
 		
 		Reply(sender, msg, 0);
     }

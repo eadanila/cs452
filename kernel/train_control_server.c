@@ -16,8 +16,11 @@
 #define SET_POSITION 2
 #define GET_POSITION 3
 #define SET_TRACK 4
+#define INIT_TRAIN 8
 
 #define SENSOR_DUMP 5
+#define NEW_TIME 6
+#define EVENT_OCCURED 7
 
 #define INFINITY __INT_MAX__
 #define UNREACHABLE -1
@@ -28,6 +31,8 @@
 
 #define TRAIN_SPEED_MAX 13
 #define TRAIN_SPEED_MIN 8
+
+#define MAX_COMMAND_NUMBER MAX_TASKS_ALLOWED - 1
 
 int TargetPosition(int tid, char train_id, char track_node_number, int offset)
 {
@@ -41,6 +46,24 @@ int TargetPosition(int tid, char train_id, char track_node_number, int offset)
 
     // If tid is not the task id of an existing task.
     if(Send(tid, message, 9, reply, 0) == -1) 
+        return INVALID_TC_SERVER;
+
+    return 0;
+}
+
+int InitTrain(int tid, char train_id, char original_track_node, char track_node_number, char speed_id)
+{
+    char message[5];
+    char reply[1];
+
+    message[0] = INIT_TRAIN;
+    message[1] = train_id;
+    message[2] = original_track_node;
+    message[3] = track_node_number;
+    message[4] = speed_id;
+
+    // If tid is not the task id of an existing task.
+    if(Send(tid, message, 5, reply, 0) == -1) 
         return INVALID_TC_SERVER;
 
     return 0;
@@ -73,13 +96,14 @@ int SetTrack(int tid, char track_id)
 
 // State variables, not accessed by any tasks other than train_control_server process and functions
 // which only train_control_server calls.
-char track_id;
-track_node* track;
-TrackConstants track_constants;
+static char track_id;
+static track_node* track;
+static TrackConstants track_constants;
 
-int tcid;
-track_node tracka[TRACK_MAX];
-track_node trackb[TRACK_MAX];
+static int tcid;
+static int pid;
+static track_node tracka[TRACK_MAX];
+static track_node trackb[TRACK_MAX];
 
 // For each node, a complete path 
 int shortest_paths_a[TRACK_MAX][TRACK_MAX];
@@ -88,6 +112,14 @@ int shortest_paths_b[TRACK_MAX][TRACK_MAX];
 // Distances for above paths
 int shortest_distances_a[TRACK_MAX][TRACK_MAX];
 int shortest_distances_b[TRACK_MAX][TRACK_MAX];
+
+EventCommand event_commands[MAX_COMMAND_NUMBER + 1];
+
+// TODO In the future these will be arrays.
+TrainState train_state;
+TrainPathPlan plan;
+
+int event_cnt;
 
 // UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
     // track_node* tracka;
@@ -313,9 +345,12 @@ void initialize()
 // NOTE: Assuming dest_offset does not reach the node before or after it.
 // TODO Add an error return for this ^
 // A shortest path from node to dest must exist.
-void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset)
+void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset, char end_speed)
 {
+    p->valid = 1;
     p->state = train_state;
+    p->end_speed = end_speed;
+
     int node = train_state->node;
 
     assert (node != dest);
@@ -395,14 +430,14 @@ void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, i
     assert(p->path_len > 0);
 }
 
-TrainState create_train_state(int node, int offset, int speed)
+void init_train_state(TrainState* result, int id, int node, int offset, int speed)
 {
-    TrainState result;
-    result.node = node;
-    result.offset = offset;
-    result.speed = speed;
+    result->valid = 1;
 
-    return result;
+    result->id = id;
+    result->node = node;
+    result->offset = offset;
+    result->speed = speed;
 }
 
 // Continously spins for sensor data from the tc server and sends it 
@@ -429,8 +464,137 @@ void train_control_sensor_state_notifier()
 	}
 }
 
+void event()
+{
+    int cid = WhoIs("clock_server");
+    int sender;
+    char msg[4];
+
+    // Receive integer delay and respond instantly
+    Receive(&sender, msg, 4);
+    Reply(sender, msg, 0);
+
+    // Delay for time received
+    int time = Delay(cid, unpack_int(msg));
+
+    // After the delay, send back the current time!
+    char response[5];
+    response[0] = EVENT_OCCURED;
+    pack_int(time, response + 1);
+    char reply;
+    Send(sender, response, 5, &reply, 0);
+}
+
+// // This is used for interpolation, and executing commands at any tick.
+// // Sends the current time to the tc_server ever tick.
+// void time_notifier()
+// {
+//     int tcid = WhoIs("train_control");
+//     int csid = WhoIs("clock_server");
+
+//     char message[5];
+//     char reply[1];
+
+//     message[0] = NEW_TIME;
+
+//     for(;;)
+//     {
+//         int time = Delay(csid, 5);
+//         pack_int(time, message + 1);
+
+//         // Notify server that time has changed
+//         Send(tcid, message, 5, reply, 0);
+//     }
+// }
+
+int switch_needed(TrainPathPlan* p, char* switch_id, char* direction)
+{
+
+    // Look if there is a branch between the next two sensors, switch if there is.
+    // If branch is last node in the path, we say no switch is needed.
+
+    int sensors_past = 0;
+
+    // On the last node!
+    if(p->current_node == p->path_len - 1) return 0;
+
+    for(int i = p->current_node + 1; i != p->path_len; i++)
+    {
+        if(track[p->path[i]].type == NODE_SENSOR)
+        {
+            sensors_past++;
+            if(sensors_past == 2) return 0;
+        }
+
+        track_node* node = &track[p->path[i]];
+        if(sensors_past == 1 && node->type == NODE_BRANCH && i != p->path_len-1)
+        {
+            track_node* after_branch = &track[p->path[i+1]];
+
+            *switch_id = node->num;
+
+            if(node->edge[DIR_STRAIGHT].dest == after_branch) *direction = STRAIGHT;
+            else if(node->edge[DIR_CURVED].dest == after_branch) *direction = CURVED; 
+
+            return 1; 
+        }
+    }
+
+    return 0;
+
+    // if(p->current_node + 3 < p->path_len && track[p->path[p->current_node + 2]].type == NODE_BRANCH)
+    // {
+    //     track_node* branch = &track[p->path[p->current_node + 2]];
+    //     track_node* after_branch = &track[p->path[p->current_node + 3]];
+        
+    //     *switch_id = branch->num;
+        
+    //     if(branch->edge[DIR_STRAIGHT].dest == after_branch) *direction = STRAIGHT;
+    //     else if(branch->edge[DIR_CURVED].dest == after_branch) *direction = CURVED;  
+
+    //     return 1; 
+    // }
+    // else return 0;
+}
+
+int is_sensor(int node_id)
+{
+    return (node_id >= 0 && node_id < MAX_SENSOR_NUMBER);
+}
+
+void update_path_plan(TrainState* train_state, char* newly_triggered)
+{
+    // Make neccessary switch events if close to a switch
+    // TODO Keep track of switch state in tc server and have function to return 
+    
+    assert(plan.state == train_state);
+
+    // Update current node in path plan if this sensor hit was on the path.
+    for(int i = plan.current_node; i < plan.path_len; i++)
+    {
+
+        if(is_sensor(plan.path[i]) && plan.path[i] == train_state->node)
+        {
+            assert(is_sensor(train_state->node));
+            plan.current_node = i;
+            break;
+        }
+    }
+
+    char switch_id;
+    char switch_direction;
+
+    // TODO Keep track of global switch state and transition to that 
+    if(switch_needed(&plan, &switch_id, &switch_direction))
+    {
+        SwitchTrackAsync(tcid, switch_id, switch_direction);
+        TPrintAt(pid, 0, 40, "switched %d in dir %d ", switch_id, switch_direction);
+    }
+}
+
 // In the future this will be an array of train_states
 // Does not interpolate, simple snaps train into position based on sensor hits.
+// Return if any sensor was NEWLY TRIGGERED
 void update_train_states(TrainState* train_state, char* newly_triggered)
 {
     int sensor_triggered = -1;
@@ -438,7 +602,7 @@ void update_train_states(TrainState* train_state, char* newly_triggered)
     // from each sensor to figure out which train state to update.
 
     // Find newly triggered sensor
-    for(int i = 0; i != MAX_SENSOR_NUMBER; i++)
+    for(int i = 0; i != MAX_SENSOR_NUMBER + 1; i++)
     {
         if(newly_triggered[i]) 
         {
@@ -454,6 +618,78 @@ void update_train_states(TrainState* train_state, char* newly_triggered)
     train_state->node = sensor_triggered;
 }
 
+// In the future this will be an array of train_states
+void interpolate_train_states(TrainState* train_state, int dt)
+{
+
+}
+
+int create_event(int delay)
+{
+    assert(delay > 0);
+    // Create event task
+    int event_id = Create(3, event);
+    char msg[4];
+    char reply[1];
+
+    // Send the delay duration
+    pack_int(delay, msg);
+    Send(event_id, msg, 5, reply, 0); // Will get replied to instantly 
+
+    // return the tid of the task as the event id
+    return event_id;
+}
+
+void create_event_command(int ticks, int type, int id, int arg)
+{
+    int event_id = create_event(ticks);
+
+    event_commands[event_id].type = type;
+    event_commands[event_id].id = id;
+    event_commands[event_id].arg = arg;
+    event_commands[event_id].valid = 1;
+}
+
+void execute_event(int event_id)
+{
+    // Currently ignore event id, assume all events are to stop
+
+    assert(event_commands[event_id].valid);
+
+    TPrintAt(pid, 0, 42, "event %d occured of type %d ", event_id, event_commands[event_id].type);
+
+    switch(event_commands[event_id].type)
+    {
+        case EVENT_SWITCH:
+            // TODO Make blocking switch?
+            SwitchTrackAsync(tcid, event_commands[event_id].id, event_commands[event_id].arg);
+            break;
+        case EVENT_SPEED:
+            SetSpeed(tcid, event_commands[event_id].id, event_commands[event_id].arg);
+            break;
+    }
+
+    event_commands[event_id].valid = 0;
+}
+
+// Initialize the trains state, 
+void _init_train(char train_id, char original_track_node, char track_node_number, char speed_id)
+{
+    // In TC2, use train id to select the train state and path plan from a list for each train.
+    init_train_state(&train_state, train_id, original_track_node, 0, speed_id);
+    init_train_path_plan(&plan, &train_state, track_node_number, 0, speed_id);
+
+    SetSpeed(tcid, train_id, speed_id);
+
+    TPrintAt(pid, 0, 44, "INIT_TRAIN");
+}
+
+int is_valid_speed(int speed_id)
+{
+    // TODO Needs to be updated
+    return ((speed_id == TRAIN_SPEED_MAX) || (speed_id == TRAIN_SPEED_MIN));
+}
+
 // For now assume using the following train and the following start position 
 #define CONTROLLED_TRAIN 1
 
@@ -462,14 +698,15 @@ void update_train_states(TrainState* train_state, char* newly_triggered)
 
 void train_control_server(void)
 {
+    event_cnt = 0; event_cnt += 0;
     RegisterAs("train_control");
 
     tcid = WhoIs("tc_server");
-
     int cid = WhoIs("clock_server");
-    int pid = WhoIsWait(cid, "terminal");
+    pid = WhoIsWait(cid, "terminal");
 
     Create(3, train_control_sensor_state_notifier);
+    // Create(3, time_notifier);
 
     int sender;
     char msg[11];
@@ -503,22 +740,26 @@ void train_control_server(void)
 
     initialize();
 
-    // TEMP hardcoded source and dest node indices
-    int source = sensor_string_index(ORIGIN);
-    int dest = sensor_string_index(DESTINATION);
+    // // TEMP hardcoded source and dest node indices
+    // int source = sensor_string_index(ORIGIN);
+    // int dest = sensor_string_index(DESTINATION);
 
     track = tracka;
     track_id = 'A';
 
     // Initialize single train state 
-    TrainState train_state = create_train_state(source, 0, 0);
-
-    TrainPathPlan plan;
-    init_train_path_plan(&plan, &train_state, dest, 0);
+    train_state.valid = 0;
+    plan.valid = 0;
 
     // Parsed sensor states 
-    char sensor_states[MAX_SENSOR_NUMBER];
-    char newly_triggered_sensors[MAX_SENSOR_NUMBER];
+    char sensor_states[MAX_SENSOR_NUMBER + 1];
+    char newly_triggered_sensors[MAX_SENSOR_NUMBER + 1];
+
+    for(int i = 0; i != MAX_COMMAND_NUMBER + 1; i++) event_commands[i].valid = 0;
+
+    int time = Time(cid); time += 0; //Suppress pedantic
+    int new_time;
+    int sensor_updated = 0;
 
     // // Verify path is correct.
     // print("path length %d", plan.path_len);
@@ -527,7 +768,9 @@ void train_control_server(void)
     //     // print("type: %d\n\r", (int)track[plan.path[i]].type);
     //     if(track[plan.path[i]].type == NODE_SENSOR) print("%s ", track[plan.path[i]].name);
     // }
-    int cnt = 0;
+    int cnt = 0; cnt += 0;
+    // create_event_command(800, EVENT_SWITCH, 1, CURVED); //test event
+
     for(;;)
     {
         // Receive clock server request
@@ -536,6 +779,28 @@ void train_control_server(void)
         // Execute the command encoded in the request
         switch(msg[0])
         {
+            // case NEW_TIME:
+            //     // Interpolate and possible produce actions
+
+            //     new_time = unpack_int(msg + 1);
+            //     // Delta time should always be 1, but is calculated for sanity.
+            //     interpolate_train_states(&train_state, new_time - time);
+
+            //     time = new_time;
+
+            //     Reply(sender, reply_msg, 0);
+            //     break;
+
+            case EVENT_OCCURED:
+                new_time = unpack_int(msg + 1);
+                
+                // The event id is the tid of the event sender
+                execute_event(sender);
+                time = new_time;
+
+                Reply(sender, reply_msg, 0);
+                break;
+                
             case SET_TRACK:
                 track_id = msg[1];
                 if(track_id == 'A') track = tracka;
@@ -553,14 +818,26 @@ void train_control_server(void)
                 break;
 
             case SENSOR_DUMP:
-                parse_sensors(msg + 1, sensor_states, newly_triggered_sensors);
-                update_train_states(&train_state, newly_triggered_sensors);
+                newly_triggered_sensors[0] += 0;
+                sensor_states[0] += 0;
+                sensor_updated = parse_sensors(msg + 1, sensor_states, newly_triggered_sensors);
                 
-                Reply(sender, reply_msg, 0);
+                if(train_state.valid) update_train_states(&train_state, newly_triggered_sensors);
+                // Only update path plan if sensor was newly triggered!
+                sensor_updated += 0;
+                if(plan.valid && train_state.valid && sensor_updated) update_path_plan(&train_state, newly_triggered_sensors);
 
-                TPrintAt(pid, 0, 40, "train_location: %s   ", track[train_state.node].name);
-                TPrintAt(pid, 0, 41, "cnt: %d", cnt++);
+                Reply(sender, reply_msg, 0);
+                break;
+
+            case INIT_TRAIN:
+                Reply(sender, reply_msg, 0); // Temp reply first to allow prints to terminal
+                _init_train(msg[1], msg[2], msg[3], msg[4]);
+
                 break;
         }
+
+        // TPrintAt(pid, 0, 40, "train_location: %s   ", track[train_state.node].name);
+        // TPrintAt(pid, 0, 41, "cnt: %d", cnt++);
     }
 }

@@ -23,7 +23,7 @@
 #define PRINTS_PER_LINE 8
 #define DISCARD_HITS 5
 
-volatile int all_sensor_states[128];
+static volatile int all_sensor_states[128];
 
 int seconds_to_tics(float seconds)
 {

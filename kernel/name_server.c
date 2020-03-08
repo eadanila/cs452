@@ -12,7 +12,7 @@
 #define REGISTERAS_MESSAGE_PREFIX 1
 #define WHOIS_MESSAGE_PREFIX 2
 
-char names[MAX_TASKS_ALLOWED][MAX_NAME_LENGTH];
+static char names[MAX_TASKS_ALLOWED][MAX_NAME_LENGTH];
 
 int RegisterAs(const char *name)
 {

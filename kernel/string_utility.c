@@ -187,6 +187,7 @@ int _format_string ( char* result, int size, char *fmt, va_list va ) {
 	int w;
 
 	char* result_start_addr = result;
+	int original_size = size;
 
 	while ( ( ch = *(fmt++) ) ) {
 		if ( ch != '%' )
@@ -212,8 +213,14 @@ int _format_string ( char* result, int size, char *fmt, va_list va ) {
 			}
 			switch( ch ) {
 			case 0: 
-				if(result != 0) *result = 0;
-				return result == 0;
+				// Return an error if the result buffer provided was not large enough
+				if(result != 0) 
+				{
+					*result = 0;
+					return result - result_start_addr;
+				}
+
+				return -1;
 			case 'c':
 				sputc( &result, &size, va_arg( va, char ) );
 				break;
@@ -238,6 +245,9 @@ int _format_string ( char* result, int size, char *fmt, va_list va ) {
 			}
 		}
 	}
+
+	// For safety
+	result_start_addr[original_size - 1] = 0;
 	
 	// Return an error if the result buffer provided was not large enough
 	if(result != 0) 

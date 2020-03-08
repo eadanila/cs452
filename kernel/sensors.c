@@ -41,9 +41,13 @@ void sensor_name_string(int sensor_index, char* s)
 
 int parse_sensors(char* sensor_bytes, char* sensor_states, char* newly_triggered)
 {
+	assert(sensor_states != 0);
+	assert(sensor_bytes != 0);
+	assert(newly_triggered != 0);
+
 	int updated = 0;
 
-    for(int i = 0; i != SENSOR_COUNT; i++) newly_triggered[i] = 0;
+    for(int i = 0; i != MAX_SENSOR_NUMBER + 1; i++) newly_triggered[i] = 0;
 
 	for( int i = 0; i != 10; i+=2)
 	{
