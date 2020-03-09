@@ -31,6 +31,7 @@
 
 #define TPRINT_COMMAND 1
 #define TPRINTAT_COMMAND 2
+#define PRINT_TRACK_COMMAND 3
 
 // The following variables are used by functions only called by the terminal task.
 // Although "global", these variables are accessed by no other task
@@ -84,6 +85,17 @@ void TPrint(int tid, char* str, ... )
     Send(tid, message, MAX_TPRINT_SIZE + 1, reply, 0);
 
 	va_end(va);
+}
+
+void PrintTrack(int tid, char track)
+{
+	char message[2];
+    char reply[1];
+
+	message[0] = PRINT_TRACK_COMMAND;
+	message[1] = track;
+
+	Send(tid, message, 2, reply, 0);
 }
 
 void TPrintAt(int tid, int x, int y, char* str, ...)
@@ -390,13 +402,13 @@ void process_command()
 		if(is_arg("A", &command_p))
 		{
 			active_track = TRACK_A;
-			print_track(pid, track_a_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
+			PrintTrack(pid, 'A');
 			SetTrack(train_control_server_id, 'A');
 		} 
 		else if(is_arg("B", &command_p))
 		{
 			active_track = TRACK_B;
-			print_track(pid, track_b_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
+			PrintTrack(pid, 'B');
 			SetTrack(train_control_server_id, 'B');
 		} 
 		else print_invalid_argument();
@@ -602,52 +614,6 @@ void terminal_printer()
 	RegisterAs("terminal_output");
 	int pid = WhoIs("com2");
 
-	char msg[MAX_TPRINT_SIZE + 1];
-	char reply[1];
-	int msg_size;
-	int sender;
-
-	for(;;)
-	{
-		msg_size = Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
-
-		switch(msg[0])
-		{
-			case TPRINT_COMMAND:
-				
-				// For sanity, throw a null terminator at the end of the message
-				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
-				else msg[msg_size] = 0;
-
-				// For now, just print it.
-				// TODO Move TPrints from other tasks to a designated scrolling area.
-				UPrint(pid, msg + 1);
-
-				break;
-				
-			case TPRINTAT_COMMAND:
-				// For sanity, throw a null terminator at the end of the message
-				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
-				else msg[msg_size] = 0;
-				// Print the message, has the location encoded in it already.
-				UPrint(pid, msg + 1);
-
-				break;
-				
-			default:
-				// Unrecognized command sent!
-				assert(0);
-				break;
-		}
-
-		Reply(sender, reply, 0);
-	}
-}
-
-void terminal(void)
-{
-	// RegisterAs("terminal");
-
 	unsigned int* track_a_straight[] = 
 	{
 	L"──────────────────── ╭─────────────────────────────────────────────────────────────────────────────╮ \n\r",
@@ -852,8 +818,76 @@ void terminal(void)
 		13,36
 	};
 
+	int switch_to_index[0x9C + 1];
+	for(int i = 1; i != 19; i++) switch_to_index[i] = i - 1;
+	switch_to_index[0x99] = 18;
+	switch_to_index[0x9A] = 19;
+	switch_to_index[0x9B] = 20;
+	switch_to_index[0x9C] = 21;
+
+	init_track_view( &track_a_straight_view, track_a_straight, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
+					 switch_to_index, track_a_turnout_types, track_a_turnout_positions); 
+	init_track_view( &track_a_curved_view, track_a_curved, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
+					 switch_to_index, track_a_turnout_types, track_a_turnout_positions); 
+	init_track_view( &track_b_straight_view, track_b_straight, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
+					 switch_to_index, track_b_turnout_types, track_b_turnout_positions); 
+	init_track_view( &track_b_curved_view, track_b_curved, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
+					 switch_to_index, track_b_turnout_types, track_b_turnout_positions); 
+
+	char msg[MAX_TPRINT_SIZE + 1];
+	char reply[1];
+	int msg_size;
+	int sender;
+
+	for(;;)
+	{
+		msg_size = Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
+
+		switch(msg[0])
+		{
+			case TPRINT_COMMAND:
+				
+				// For sanity, throw a null terminator at the end of the message
+				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
+				else msg[msg_size] = 0;
+
+				// For now, just print it.
+				// TODO Move TPrints from other tasks to a designated scrolling area.
+				UPrint(pid, msg + 1);
+
+				break;
+				
+			case TPRINTAT_COMMAND:
+				// For sanity, throw a null terminator at the end of the message
+				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
+				else msg[msg_size] = 0;
+				// Print the message, has the location encoded in it already.
+				UPrint(pid, msg + 1);
+
+				break;
+
+			case PRINT_TRACK_COMMAND:
+				if(msg[1] == 'A')
+					print_track(pid, track_a_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
+				else if(msg[1] == 'B')
+					print_track(pid, track_b_straight_view.data, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
+
+				break;
+				
+			default:
+				// Unrecognized command sent!
+				assert(0);
+				break;
+		}
+
+		Reply(sender, reply, 0);
+	}
+}
+
+void terminal(void)
+{
 	RegisterAs("terminal");
-	pid = Create(4, terminal_printer);
+	pid = Create(2, terminal_printer); // NOTE was 4
 	com1_id = WhoIs("com1");
 	tcid = WhoIs("tc_server");
 	train_control_server_id = WhoIs("train_control");
@@ -899,12 +933,12 @@ void terminal(void)
 	for(int i = 0; i != SWITCH_COUNT; i++) switch_states[switches[i]] = 'S';
 	switch_updated = 1;
 
-	int switch_to_index[0x9C + 1];
-	for(int i = 1; i != 19; i++) switch_to_index[i] = i - 1;
-	switch_to_index[0x99] = 18;
-	switch_to_index[0x9A] = 19;
-	switch_to_index[0x9B] = 20;
-	switch_to_index[0x9C] = 21;
+	// int switch_to_index[0x9C + 1];
+	// for(int i = 1; i != 19; i++) switch_to_index[i] = i - 1;
+	// switch_to_index[0x99] = 18;
+	// switch_to_index[0x9A] = 19;
+	// switch_to_index[0x9B] = 20;
+	// switch_to_index[0x9C] = 21;
 
 	// Initialize command buffer
     command_len = 0;
@@ -915,17 +949,7 @@ void terminal(void)
 	TPrintAt(pid, 3, INITIALIZATION_PRINT_HEIGHT, "INITIALIZING...");
 
 	active_track = TRACK_A;
-
-	print_track(pid, track_a_straight, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT);
-
-	init_track_view( &track_a_straight_view, track_a_straight, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_a_turnout_types, track_a_turnout_positions); 
-	init_track_view( &track_a_curved_view, track_a_curved, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_a_turnout_types, track_a_turnout_positions); 
-	init_track_view( &track_b_straight_view, track_b_straight, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_b_turnout_types, track_b_turnout_positions); 
-	init_track_view( &track_b_curved_view, track_b_curved, TRACK_DISPLAY_WIDTH, TRACK_DISPLAY_HEIGHT, TRACK_PRINT_COL, TRACK_PRINT_HEIGHT,
-					 switch_to_index, track_b_turnout_types, track_b_turnout_positions); 
+	PrintTrack(pid, 'A');
 
     for(;;)
     {
@@ -958,7 +982,7 @@ void terminal(void)
 					break;
 
 				default:
-					if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == ' ' || (c >= '0' && c <= '9')) 
+					if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == ' ' || (c >= '0' && c <= '9') || c == '-') 
 						command_append(c);
 					break;
 			}

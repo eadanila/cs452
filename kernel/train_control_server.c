@@ -32,6 +32,8 @@
 #define TRAIN_SPEED_MAX 14
 #define TRAIN_SPEED_MIN 8
 
+#define STATUS_BAR_HEIGHT 43
+
 #define MAX_COMMAND_NUMBER MAX_TASKS_ALLOWED - 1
 
 void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset, char end_speed);
@@ -121,10 +123,11 @@ int shortest_distances_b[TRACK_MAX][TRACK_MAX];
 EventCommand event_commands[MAX_COMMAND_NUMBER + 1];
 
 // TODO In the future these will be arrays.
-TrainState train_state;
-TrainPathPlan plan;
+static TrainState train_state;
+static TrainPathPlan plan;
 
-int event_cnt;
+static int event_cnt;
+static int sensor_time;
 
 // UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
     // track_node* tracka;
@@ -388,6 +391,7 @@ void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, i
     p->valid = 1;
     p->state = train_state;
     p->end_speed = end_speed;
+    p->next_sensor_time = -1;
 
     int node = train_state->node;
 
@@ -588,6 +592,13 @@ int next_sensor(TrainPathPlan* plan)
     return current_node;
 }
 
+void clear_status_print()
+{
+    TPrintAt(pid, 30, STATUS_BAR_HEIGHT, "TIME DEVIATION: -    ");
+    TPrintAt(pid, 60, STATUS_BAR_HEIGHT, "DISTANCE DEVIATION: -    ");
+    TPrintAt(pid, 1, STATUS_BAR_HEIGHT, "NEXT SENSOR ON PATH: -    ");
+}
+
 void update_path_plan(TrainState* train_state, char* newly_triggered)
 {
     // train_state has been updated, but path has not.
@@ -638,12 +649,36 @@ void update_path_plan(TrainState* train_state, char* newly_triggered)
     // Make next the future sensor to be hit now.
     next = next_sensor(&plan);
 
+    // update next sensor time if there is another sensor!
+    if(next != -1)
+    {
+        if(plan.next_sensor_time != -1)
+        {
+            TPrintAt(pid, 30, STATUS_BAR_HEIGHT, "TIME DEVIATION: %d    ",  sensor_time - plan.next_sensor_time );
+            TPrintAt(pid, 60, STATUS_BAR_HEIGHT, "DISTANCE DEVIATION: %d    ",  
+                    ((sensor_time - plan.next_sensor_time) * real_speed(train, speed))/100 );
+        }
+
+        char sensor_string[5];
+        sensor_name_string(plan.path[next], sensor_string);
+        TPrintAt(pid, 1, STATUS_BAR_HEIGHT, "NEXT SENSOR ON PATH: %s    ",  sensor_string);
+    }
+
+    int next_sensor_distance = (plan.path_distance[plan.current_node] - plan.path_distance[next]);
+    int next_sensor_ticks = (next_sensor_distance*100)/real_speed(train, speed);
+    plan.next_sensor_time = next_sensor_ticks + sensor_time;
+
     // Switch a turnout if needed
     // TODO Keep track of global switch state and transition to that 
     switch_needed(&plan);
 
     // No new sensors -> invalidate the track plan, calculate everything else needed for the path
-    if(next == -1) plan.valid = 0;
+    if(next == -1)
+    {
+        plan.valid = 0;
+
+        clear_status_print();
+    }
 
     // Check if its time to stop
     // Stop if were on the last sensor or the next sensors distance to the goal is less than our stopping distance
@@ -825,8 +860,9 @@ void train_control_server(void)
 
     for(int i = 0; i != MAX_COMMAND_NUMBER + 1; i++) event_commands[i].valid = 0;
 
-    int time = Time(cid); time += 0; //Suppress pedantic
-    int new_time;
+    int event_time = Time(cid); event_time += 0; //Suppress pedantic
+    sensor_time = event_time;
+    int new_event_time;
     int sensor_updated = 0;
 
     // // Verify path is correct.
@@ -838,6 +874,8 @@ void train_control_server(void)
     // }
     int cnt = 0; cnt += 0;
     // create_event_command(800, EVENT_SWITCH, 1, CURVED); //test event
+
+    clear_status_print();
 
     for(;;)
     {
@@ -860,11 +898,11 @@ void train_control_server(void)
             //     break;
 
             case EVENT_OCCURED:
-                new_time = unpack_int(msg + 1);
+                new_event_time = unpack_int(msg + 1);
                 
                 // The event id is the tid of the event sender
                 execute_event(sender);
-                time = new_time;
+                event_time = new_event_time;
 
                 Reply(sender, reply_msg, 0);
                 break;
@@ -904,7 +942,11 @@ void train_control_server(void)
                 if(train_state.valid) update_train_states(&train_state, newly_triggered_sensors);
                 // Only update path plan if sensor was newly triggered!
                 sensor_updated += 0;
-                if(plan.valid && train_state.valid && sensor_updated) update_path_plan(&train_state, newly_triggered_sensors);
+                if(plan.valid && train_state.valid && sensor_updated)
+                {
+                    sensor_time = Time(cid);
+                    update_path_plan(&train_state, newly_triggered_sensors);
+                } 
 
                 Reply(sender, reply_msg, 0);
                 break;

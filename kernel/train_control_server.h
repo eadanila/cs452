@@ -48,6 +48,7 @@ struct train_path_plan
     // Index in the path 
     int current_node;
     int end_speed;
+    int next_sensor_time;
 };
 
 // Offset in mm
