@@ -11,6 +11,7 @@
 #include "timer.h"
 #include "track_display.h"
 #include "train_control_server.h"
+#include "sensors.h"
 
 #define COMMAND_PRINT_HEIGHT 35
 #define SWITCH_PRINT_HEIGHT 9
@@ -23,6 +24,7 @@
 
 #define MAX_COMMAND_LEN 127
 #define MAX_TPRINT_SIZE 1024
+#define MAX_READ_STRING_SIZE 16
 
 #define TERMINAL_TICK_NOTIFIER_DELAY 5
 #define TERMINAL_NOTIFIER_PRIORITY 4
@@ -163,6 +165,30 @@ int is_command(char* prefix, char** command)
 	int r = _strsim(prefix, *command) == prefix_len;
 	if(r) (*command) += prefix_len;
 	return r;
+}
+
+// Increment *command past string if another word exists.
+// Returns if the command contained another word
+int read_string(char* buffer, char** command)
+{
+	// Skip whitespace
+	while(**command == ' ') (*command)++;
+
+	// If end of string, return no new word
+	if(**command == 0) return 0;
+
+	int read = 0;
+	while(**command != 0 && **command != ' ' && read < MAX_READ_STRING_SIZE)
+	{
+		*buffer = **command;
+		read++;
+		buffer++;
+		(*command)++;
+	}
+
+	*buffer = 0;
+
+	return 1;
 }
 
 // Increment *command past the argument if the argument matches.
@@ -385,14 +411,52 @@ void process_command()
 	else if (is_command("it", &command_p)) 
 	{
 		int t_number = parse_int(&command_p);
-		int t_node = parse_int(&command_p);
-		int t_target_node = parse_int(&command_p);
+		// int t_node = parse_int(&command_p);
+		// int t_target_node = parse_int(&command_p);
+
+		char t_node_string[MAX_READ_STRING_SIZE];
+		char t_target_node_string[MAX_READ_STRING_SIZE];
+
+		read_string(t_node_string, &command_p);
+		read_string(t_target_node_string, &command_p);
+
+		// print(" %s ", t_node_string);
+		// print(" %s ", t_target_node_string);
+		// assert(0);
+
+		if(_strlen(t_node_string) > 3 || _strlen(t_node_string) < 2 ||
+		   _strlen(t_target_node_string) > 3 || _strlen(t_target_node_string) < 2) 
+		   {
+			   print_invalid_argument();
+			   return;
+		   }
+
+		int t_node = sensor_string_index(t_node_string);
+		int t_target_node = sensor_string_index(t_target_node_string);
+
+		if(t_node < 0 || t_target_node < 0) 
+		{
+			print_invalid_argument();
+			return;
+		}
+			
 		int t_target_speed = parse_int(&command_p);
 
 		if(command_p == 0) print_invalid_argument();
 		if(!is_valid_speed(t_target_speed)) print_invalid_argument();
 
 		if(InitTrain(train_control_server_id, t_number, t_node, t_target_node, t_target_speed) == NO_PATH_EXISTS)
+			print_invalid_path();
+	}
+	else if (is_command("tp", &command_p)) 
+	{
+		int t_number = parse_int(&command_p);
+		int t_target_node = parse_int(&command_p);
+		int t_offset = parse_int(&command_p);
+
+		if(command_p == 0) print_invalid_argument();
+
+		if(TargetPosition(train_control_server_id, t_number, t_target_node, t_offset))
 			print_invalid_path();
 	}
 	else if (is_command("sl", &command_p)) 

@@ -23,6 +23,7 @@ int sensor_string_index(char* s);
 
 // Identical to sensor_name, but returns the sensor name in a string instead.
 // s must be of size 4
+// Returns -1 if the string is not of valid format
 void sensor_name_string(int sensor_index, char* s);
 
 // Parses a 10 byte sensor dump read from a Marklin box. sensor_states and 

@@ -23,6 +23,9 @@ int sensor_string_index(char* s)
 	assert(s[3] == 0 || s[4] == 0);
 	char bank = s[0];
 	int sensor_number = stoi(s + 1);
+
+	if(bank < 'A' || bank > 'E' || sensor_number >= SENSOR_COUNT || sensor_number < 0) return -1;
+
 	return sensor_index(bank, sensor_number);
 }
 
