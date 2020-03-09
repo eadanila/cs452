@@ -5,6 +5,7 @@
 #include "name_server.h"
 #include "clock_server.h"
 #include "logging.h"
+#include "track_constants.h"
 
 #define MAX_REQUEST_LENGTH 11
 
@@ -86,6 +87,8 @@ Command remove_command(CommandRingBuffer *b)
 	Command r = b->data[b->start]; 
 	b->start = (b->start + 1)%COMMAND_BUFFER_SIZE;
 	b->size--;
+
+    assert(b->size == b->end - b->start);
 	return r;
 }
 
@@ -142,7 +145,7 @@ void process_command_queue(int tid, CommandRingBuffer* crb, int dt)
 
         if(current_command->delay <= dt)
         {
-            // Execute the command
+            // Commands already been executed
             dt -= current_command->delay;
             
             remove_command(crb);
@@ -325,6 +328,11 @@ void sensor_dump_notifier()
 
 void tc_server(void)
 {
+    // TODO Remove for debugging
+    com1_queue_size = 0;
+    com1_queue_start = 0;
+    com1_queue_end = 0;
+
     RegisterAs("tc_server");
 
     int uid = WhoIs("com1");
@@ -344,20 +352,11 @@ void tc_server(void)
 
     int new_time; // Used to calculate delta time between ticks.
     int time = Time(csid);
-    int waiting_for_sensor_dump = -1; // TODO Add support for multiple waiting for sensor commands.
 
-    // Initialize train constants
-    int train_ids[] = {1, 24, 58, 74, 78, 79}; // All possible train id's
-    int train_to_enumeration[MAX_TRAIN_NUMBER + 1]; // Array to convert a train_id to its position in "train_ids"
-    for(int i = 0; i != MAX_TRAIN_NUMBER + 1; i++) train_to_enumeration[i] = -1; // Initialize train_to_enumeration
-    for(int i = 0; i != TRAIN_COUNT; i++) train_to_enumeration[train_ids[i]] = i; // Initialize train_to_enumeration
+    int waiting_for_sensor_dump_size = 0;
+    int waiting_for_sensor_dump[MAX_TASKS_ALLOWED];
 
-    int switch_ids[SWITCH_COUNT]; // All possible train id's
-	for(int i = 0; i != 18; i++) switch_ids[i] = i + 1;
-	switch_ids[18] = 0x99;
-	switch_ids[19] = 0x9A;
-	switch_ids[20] = 0x9B;
-	switch_ids[21] = 0x9C;
+    TrackConstants track_constants = create_track_constants();
 
     // Stores speed of each train last set.
     int train_speeds[TRAIN_COUNT];
@@ -371,13 +370,13 @@ void tc_server(void)
     // Set all train speeds to 0
     for(int i = 0; i != TRAIN_COUNT; i++) // 1 -> 6,  2 -> 9 , 3 -> 12, 4 -> 15, 5-> 18, 6 -> 21
         add_command(&command_queue.train_commands[i], 
-                    create_command(0, train_ids[i], 0));
+                    create_command(0, track_constants.train_ids[i], 0));
 
     // Set all switches to straight
     for(int i = 0; i != SWITCH_COUNT; i++) 
     {
         add_command(&command_queue.switch_commands, create_command(STRAIGHT, 
-                                                                   switch_ids[i], 
+                                                                   track_constants.switch_ids[i], 
                                                                    SWITCH_DELAY));
     }
     add_command(&command_queue.switch_commands, create_command(TURN_OFF_SOLENOID, 
@@ -407,6 +406,7 @@ void tc_server(void)
             case INIT_COMPLETE_COMMAND:
                 waiting_for_init[waiting_for_init_count] = sender;
                 waiting_for_init_count++;
+                break;
 
             case NOTIFIER_STARTED:
                 // Do nothing
@@ -418,6 +418,7 @@ void tc_server(void)
                 //      return a corresponding error message.
                 print("----- %d ----- ", msg[0]);
                 assert(0);
+                break;
         }
 
         // Initialization has completed
@@ -451,13 +452,17 @@ void tc_server(void)
                 break;
 
             case SENSOR_DUMP:
-                assert(waiting_for_sensor_dump != -1);
+                assert(waiting_for_sensor_dump_size > 0);
 
                 // Sensor dump notifier finished obtaining the requested sensor dump.
-                // Reply to the waiting task with the data.
+                // Reply to waiting tasks with the data.
                 // TODO Have sensor_dump_notifer respond to the task directly instead.
-                Reply(waiting_for_sensor_dump, msg + 1, 10);
-                waiting_for_sensor_dump = -1;
+
+                while(waiting_for_sensor_dump_size > 0)
+                {
+                    waiting_for_sensor_dump_size--;
+                    Reply(waiting_for_sensor_dump[waiting_for_sensor_dump_size], msg + 1, 10);
+                }
                 break;
 
             case NOTIFIER_STARTED:
@@ -485,12 +490,12 @@ void tc_server(void)
                 break;
 
             case SET_SPEED_COMMAND:
-                assert(train_to_enumeration[(int)msg[1]] != -1);
+                assert(track_constants.train_id_to_index[(int)msg[1]] != -1);
 
                 // msg[2] is speed, msg[1] is train id
-                add_command(&command_queue.train_commands[train_to_enumeration[(int)msg[1]]], 
+                add_command(&command_queue.train_commands[track_constants.train_id_to_index[(int)msg[1]]], 
                         create_command(msg[2], msg[1], 0));
-                train_speeds[train_to_enumeration[(int)msg[1]]] = msg[2];
+                train_speeds[track_constants.train_id_to_index[(int)msg[1]]] = msg[2];
 
                 Reply(sender, msg, 0);
                 // Putc(uid, COM1, msg[2]); // speed
@@ -504,38 +509,48 @@ void tc_server(void)
                 // Stop train
                 
                 {
-                int speed = train_speeds[train_to_enumeration[(int)msg[1]]];
+                int speed = train_speeds[track_constants.train_id_to_index[(int)msg[1]]];
                 int delay_ticks = ((speed%16/4)+2)*100;
                 int stop = speed > 15 ? 16 : 0;
                 int reverse = stop + 15;
 
-                add_command(&command_queue.train_commands[train_to_enumeration[(int)msg[1]]], 
+                add_command(&command_queue.train_commands[track_constants.train_id_to_index[(int)msg[1]]], 
                             create_command(stop, msg[1], delay_ticks));
 
                 // Send reverse command
-                add_command(&command_queue.train_commands[train_to_enumeration[(int)msg[1]]], 
+                add_command(&command_queue.train_commands[track_constants.train_id_to_index[(int)msg[1]]], 
                             create_command(reverse, msg[1], 1));
 
                 // Set speed to old speed
                 // TODO Add a current train speed tracker that gets changed when command is sent
-                add_command(&command_queue.train_commands[train_to_enumeration[(int)msg[1]]], 
+                add_command(&command_queue.train_commands[track_constants.train_id_to_index[(int)msg[1]]], 
                             create_command(speed, msg[1], 1));
                 }
                 Reply(sender, msg, 0);
                 break;
 
             case GET_SENSORS_COMMAND:
-                assert(waiting_for_sensor_dump == -1); // Currently, only one task should be requesting a sensor dump at a time.
-                waiting_for_sensor_dump = sender;
+                // assert(waiting_for_sensor_dump == -1); // Currently, only one task should be requesting a sensor dump at a time.
+                waiting_for_sensor_dump[waiting_for_sensor_dump_size] = sender;
+                waiting_for_sensor_dump_size++;
 
-                // Wake up sensor_dump_notifier. It will send a sensor dump when finished.
-                Reply(sensor_dump_notifier_id, reply_msg, 0);
+                if(waiting_for_sensor_dump_size == 1)
+                {
+                    // Wake up sensor_dump_notifier if this is the first request. 
+                    // It will send a sensor dump when finished.
+                    Reply(sensor_dump_notifier_id, reply_msg, 0);
+                }
+
                 break;
 
             case INIT_COMPLETE_COMMAND:
                 // By virtue of being in this loop, initialization has been completed. Unblock the task immediately.
                 Reply(sender, msg, 0);
+                break;
         }
+        com1_queue_size = command_queue.switch_commands.size;
+        com1_queue_end = command_queue.switch_commands.end;
+        com1_queue_start = command_queue.switch_commands.start;
     }
 }
 

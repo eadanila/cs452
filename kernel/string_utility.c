@@ -1,4 +1,5 @@
 #include "string_utility.h"
+#include "logging.h"
 
 void _strcpy(char* dest, const char* src)
 {
@@ -54,11 +55,13 @@ void itos(int i, char* s)
 
 	int is_negative = i < 0; // Offset to store '-'
 	s[len + is_negative] = 0;
+	char* null_terminator = &s[len + is_negative];
 	s += (len + is_negative) - 1;
 
 	curr = i;
 	while(len > 0)
 	{
+		assert(s != null_terminator);
 		*s = '0' + curr % 10;
 		s--;
 		curr /= 10;
@@ -67,7 +70,11 @@ void itos(int i, char* s)
 
     // If i is negative, the above loop will have 
 	// stopped 1 element before the first.
+	assert(s - 1 != null_terminator);
     if(i < 0) *(s-1) = '-';
+
+	// Suppress pedantic
+	null_terminator++;
 }
 
 int stoi(char* s)
@@ -170,12 +177,17 @@ void si2a( int num, char *bf ) {
 
 // Functions the same as bwformat except "prints" to the buffer "result"
 // instead of directly to terminal.  "size" represents the size of the
-// buffer. Returns non-zero if space in the buffer ran out, in which case
+// buffer. Returns a positive integer representing the index in the 
+// buffer where the newly formatted string ends (the location of the null 
+// terminator). Returns -1 if space in the buffer ran out, in which case
 // the "printed" string has been truncated.
 int _format_string ( char* result, int size, char *fmt, va_list va ) {
 	char bf[12];
 	char ch, lz;
 	int w;
+
+	char* result_start_addr = result;
+	int original_size = size;
 
 	while ( ( ch = *(fmt++) ) ) {
 		if ( ch != '%' )
@@ -201,8 +213,14 @@ int _format_string ( char* result, int size, char *fmt, va_list va ) {
 			}
 			switch( ch ) {
 			case 0: 
-				if(result != 0) *result = 0;
-				return result == 0;
+				// Return an error if the result buffer provided was not large enough
+				if(result != 0) 
+				{
+					*result = 0;
+					return result - result_start_addr;
+				}
+
+				return -1;
 			case 'c':
 				sputc( &result, &size, va_arg( va, char ) );
 				break;
@@ -227,10 +245,18 @@ int _format_string ( char* result, int size, char *fmt, va_list va ) {
 			}
 		}
 	}
+
+	// For safety
+	result_start_addr[original_size - 1] = 0;
 	
 	// Return an error if the result buffer provided was not large enough
-	if(result != 0) *result = 0;
-	return result == 0;
+	if(result != 0) 
+	{
+		*result = 0;
+		return result - result_start_addr;
+	}
+
+	return -1;
 }
 
 int format_string ( char* result, int size, char *fmt, ... )
