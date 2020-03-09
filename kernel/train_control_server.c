@@ -774,7 +774,7 @@ void train_control_server(void)
 
     tcid = WhoIs("tc_server");
     int cid = WhoIs("clock_server");
-    pid = WhoIsWait(cid, "terminal");
+    pid = WhoIsWait(cid, "terminal_output");
 
     Create(3, train_control_sensor_state_notifier);
     // Create(3, time_notifier);

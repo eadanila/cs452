@@ -136,8 +136,7 @@ void command_clear()
 	for(int i = 0; i < MAX_COMMAND_LEN; i++) cleared[i] = ' ';
 	cleared[MAX_COMMAND_LEN - 1] = 0;
 
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT);
-	Print(pid, cleared);
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT, cleared);
 }
 
 void print_command()
@@ -146,14 +145,14 @@ void print_command()
 	else if(command_len > last_command_len)
 	{
 		// Make cursor go to bottom left.
-		MoveCursor(pid, command_len, COMMAND_PRINT_HEIGHT);
-		Putc(pid, COM2, command[command_len-1]);
+		// MoveCursor(pid, command_len, COMMAND_PRINT_HEIGHT);
+		TPrintAt(pid, command_len, COMMAND_PRINT_HEIGHT, "%c", command[command_len-1]);
 	}
 	else
 	{
 		// Make cursor go to bottom left.
-		MoveCursor(pid, 1+command_len, COMMAND_PRINT_HEIGHT);
-		Putc(pid, COM2, ' ');
+		// MoveCursor(pid, 1+command_len, COMMAND_PRINT_HEIGHT);
+		TPrintAt(pid, 1+command_len, COMMAND_PRINT_HEIGHT, " ");
 	}
 }
 
@@ -260,38 +259,32 @@ int parse_int(char** command)
 
 void print_invalid_path()
 {
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "Path from source to destination does not exist!\n\r");
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT - 1, "Path from source to destination does not exist!\n\r");
 }
 
 void print_invalid_switch_track()
 {
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "Ensure all turnouts are set to straight before switching tracks!\n\r");
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT - 1, "Ensure all turnouts are set to straight before switching tracks!\n\r");
 }
 
 void print_initialization_incomplete()
 {
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "Initialization incomplete, command ignored!\n\r");
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT - 1, "Initialization incomplete, command ignored!\n\r");
 }
 
 void print_invalid_argument()
 {
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "Invalid argument provided!\n\r");
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT - 1, "Invalid argument provided!\n\r");
 }
 
 void print_invalid_command()
 {
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "Invalid command provided!\n\r");
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT - 1, "Invalid command provided!\n\r");
 }
 
 void clear_invalid_message()
 {
-	MoveCursor(pid, 0, COMMAND_PRINT_HEIGHT - 1);
-	Print(pid, "                                                                            \n\r");
+	TPrintAt(pid, 0, COMMAND_PRINT_HEIGHT - 1, "                                                                            \n\r");
 }
 
 void print_time(int curr_time)
@@ -318,7 +311,7 @@ void print_time(int curr_time)
 		seconds_str[0] = '0';
 	}
 
-	Print(pid, "%s:%s.%s\n\r\n\r", minutes_str, seconds_str, tenths_str);
+	TPrintAt(pid, 1, TIME_PRINT_HEIGHT,"%s:%s.%s\n\r\n\r", minutes_str, seconds_str, tenths_str);
 }
 
 void process_command()
@@ -604,9 +597,56 @@ void track_initialized_notifier()
 	Send(tid, msg, 0, reply, 0);
 }
 
+void terminal_printer()
+{
+	RegisterAs("terminal_output");
+	int pid = WhoIs("com2");
+
+	char msg[MAX_TPRINT_SIZE + 1];
+	char reply[1];
+	int msg_size;
+	int sender;
+
+	for(;;)
+	{
+		msg_size = Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
+
+		switch(msg[0])
+		{
+			case TPRINT_COMMAND:
+				
+				// For sanity, throw a null terminator at the end of the message
+				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
+				else msg[msg_size] = 0;
+
+				// For now, just print it.
+				// TODO Move TPrints from other tasks to a designated scrolling area.
+				UPrint(pid, msg + 1);
+
+				break;
+				
+			case TPRINTAT_COMMAND:
+				// For sanity, throw a null terminator at the end of the message
+				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
+				else msg[msg_size] = 0;
+				// Print the message, has the location encoded in it already.
+				UPrint(pid, msg + 1);
+
+				break;
+				
+			default:
+				// Unrecognized command sent!
+				assert(0);
+				break;
+		}
+
+		Reply(sender, reply, 0);
+	}
+}
+
 void terminal(void)
 {
-	RegisterAs("terminal");
+	// RegisterAs("terminal");
 
 	unsigned int* track_a_straight[] = 
 	{
@@ -812,7 +852,8 @@ void terminal(void)
 		13,36
 	};
 
-	pid = WhoIs("com2");
+	RegisterAs("terminal");
+	pid = Create(4, terminal_printer);
 	com1_id = WhoIs("com1");
 	tcid = WhoIs("tc_server");
 	train_control_server_id = WhoIs("train_control");
@@ -823,8 +864,7 @@ void terminal(void)
 
 	// Initial output setup
 	ClearScreen(pid);
-    MoveCursor(pid, 0, 3);
-	Print(pid, "\033[?25l"); // Hide Cursor
+	TPrintAt(pid, 0, 3, "\033[?25l"); // Hide Cursor
 
 	// Initialize variables for displaying
 	for(int i = 0; i != 16; i++) sensor_states[i] = -1;
@@ -871,10 +911,8 @@ void terminal(void)
     last_command_len = 0;
     command[0] = 0;
 	char msg[MAX_TPRINT_SIZE + 1];
-	int msg_size;
 
-	MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
-	Print(pid, "INITIALIZING...");
+	TPrintAt(pid, 3, INITIALIZATION_PRINT_HEIGHT, "INITIALIZING...");
 
 	active_track = TRACK_A;
 
@@ -891,14 +929,11 @@ void terminal(void)
 
     for(;;)
     {
-		msg_size = Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
+		Receive(&sender, msg, MAX_TPRINT_SIZE + 1);
 
 		// Message received was a new char from the user
 		if(sender == input_notifier_id)
 		{
-			// Save where cursor was
-			Print(pid, "\033[s");
-
 			int c = msg[0];
 
 			// If Getc errored, try again
@@ -930,9 +965,6 @@ void terminal(void)
 
 			print_command();
 			last_command_len = command_len;
-
-			// Load saved cursor
-			Print(pid, "\033[u");
 		}
 		else if(sender == sensor_state_notifier_id)
 		{
@@ -943,9 +975,10 @@ void terminal(void)
 			// If sensor states have been updated, reprint the sensor state queue
 			if(parse_sensor_states(msg))
 			{
-				MoveCursor(pid, 1, SENSOR_PRINT_HEIGHT);
-				Print(pid, "LAST 16 SENSOR HITS: ");
-				MoveCursor(pid, 22, SENSOR_PRINT_HEIGHT);
+				TPrintAt(pid, 1, SENSOR_PRINT_HEIGHT, "LAST 16 SENSOR HITS: ");
+
+				int x = 22;
+
 				char sensor[32];
 
 				for(int i = 0; i != 16; i++)
@@ -960,8 +993,10 @@ void terminal(void)
 					sensor_str[0] = 'A' + sensor_states[i]/16;
 					itos(sensor_states[i]%16+1, number_part);
 
-					Print(pid, sensor_str);
-					Putc(pid, COM2, ' ');
+					TPrintAt(pid, x, SENSOR_PRINT_HEIGHT, sensor_str);
+					x += _strlen(sensor_str);
+					TPrintAt(pid, x, SENSOR_PRINT_HEIGHT, " ");
+					x += 1;
 				}
 			}
 
@@ -972,25 +1007,12 @@ void terminal(void)
 
 			time = unpack_int(msg);
 
-			// Save where cursor was
-			Print(pid, "\033[s");
-
-			MoveCursor(pid, 1, TIME_PRINT_HEIGHT);
 			print_time(time);
-
-			// Load saved cursor
-			Print(pid, "\033[u");
 
 			if(time % spinner_ticks_per_frame == 0)
 			{
-				// Save where cursor was
-				Print(pid, "\033[s");
+				TPrintAt(pid, 0, SPINNER_PRINT_HEIGHT, "%c", spinner[spinner_state]);
 
-				MoveCursor(pid, 0, SPINNER_PRINT_HEIGHT);
-				Putc(pid, COM2, spinner[spinner_state]);
-
-				// Load saved cursor
-				Print(pid, "\033[u");
 				spinner_state++;
 				spinner_state %= spinner_length;
 			}
@@ -999,44 +1021,19 @@ void terminal(void)
 		{
 			sensor_state_notifier_id = Create(TERMINAL_NOTIFIER_PRIORITY, sensor_state_notifier);
 			track_initialized = 1;
-			MoveCursor(pid, 3, INITIALIZATION_PRINT_HEIGHT);
-			Print(pid, "                ");
+			TPrintAt(pid, 3, INITIALIZATION_PRINT_HEIGHT, "                ");
 		}
 		else // Task requested to print to terminal
 		{
-			if(msg[0] == TPRINT_COMMAND)
-			{
-				// For sanity, throw a null terminator at the end of the message
-				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
-				else msg[msg_size] = 0;
-
-				// For now, just print it.
-				// TODO Move TPrints from other tasks to a designated scrolling area.
-				UPrint(pid, msg + 1);
-			}
-			else if (msg[0] == TPRINTAT_COMMAND)
-			{
-				// For sanity, throw a null terminator at the end of the message
-				if(msg_size > MAX_TPRINT_SIZE + 1)  msg[MAX_TPRINT_SIZE] = 0;
-				else msg[msg_size] = 0;
-				// Print the message, has the location encoded in it already.
-				UPrint(pid, msg + 1);
-			}
-			else
-			{
-				// Unrecognized command sent!
-				assert(0)
-			}
-			
+			assert(0);
 		}
 
 		// Reprint switch states if they have changed
 		if(switch_updated)
 		{
-			MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT);
-			Print(pid, "SWITCHES:");
+			TPrintAt(pid, 1, SWITCH_PRINT_HEIGHT, "SWITCHES:");
+			int x = 1;
 
-			MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT + 1);
 			char switch_number[32];
 
 			int spacing = 5;
@@ -1047,16 +1044,21 @@ void terminal(void)
 
 				int space_left = spacing - _strlen(switch_number);
 
-				Print(pid, switch_number);
+				TPrintAt(pid, x, SWITCH_PRINT_HEIGHT + 1, switch_number);
+				x += 4;
+
 				for (int i = 0; i != space_left; i++) Putc(pid, COM2, ' ');
 			}
 
-			MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT + 2);
+			// MoveCursor(pid, 1, SWITCH_PRINT_HEIGHT + 2);
+			x = 1;
 			for(int i = 0; i != SWITCH_COUNT; i++)
 			{
 				char switch_state = switch_states[switches[i]];
 
-				Putc(pid, COM2, switch_state);
+				TPrintAt(pid, x, SWITCH_PRINT_HEIGHT + 2, "%c", switch_state);
+				x+=4;
+
 				for (int i = 0; i != spacing - 1; i++) Putc(pid, COM2, ' ');
 			}
 

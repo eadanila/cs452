@@ -6,7 +6,7 @@
 
 void idle_printer(void)
 {
-    int tid = WhoIs("terminal");
+    int tid = WhoIs("terminal_output");
     int cid = WhoIs("clock_server");
 
     for (int i = 0;; i++) {
