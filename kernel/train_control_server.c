@@ -29,23 +29,26 @@
 #define TRACK_A_SIZE 144
 #define TRACK_B_SIZE 140
 
-#define TRAIN_SPEED_MAX 13
+#define TRAIN_SPEED_MAX 14
 #define TRAIN_SPEED_MIN 8
 
 #define MAX_COMMAND_NUMBER MAX_TASKS_ALLOWED - 1
 
+void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset, char end_speed);
+void create_event_command(int ticks, int type, int id, int arg);
+
 int TargetPosition(int tid, char train_id, char track_node_number, int offset)
 {
-    char message[9];
+    char message[7];
     char reply[1];
 
-    message[0] = SET_TRACK;
+    message[0] = TARGET_POSITION;
     message[1] = train_id;
-    message[2] = train_id;
-    pack_int(offset, message + 3);;
+    message[2] = track_node_number;
+    pack_int(offset, message + 3);
 
     // If tid is not the task id of an existing task.
-    if(Send(tid, message, 9, reply, 0) == -1) 
+    if(Send(tid, message, 7, reply, 0) == -1) 
         return INVALID_TC_SERVER;
 
     return 0;
@@ -142,12 +145,32 @@ void _set_position(char train_id, char sensor_id1, char sensor_id2)
 
 void _target_position(char train_id, char track_node_number, int offset)
 {
+    // Train id currently ignored since only one train
+    assert(train_id == train_state.id);
 
+    // Overwrite the current track plan
+    init_train_path_plan(&plan, &train_state, track_node_number, offset, 0);
 }
 
 void _get_position(char train_id)
 {
 
+}
+
+int real_speed(int train, int speed)
+{
+    if(track_id == 'A') return track_constants.real_speed_a[train][speed];
+    if(track_id == 'B') return track_constants.real_speed_b[train][speed];
+    assert(0); //Shouldn't get here!
+    return 0;
+}
+
+int stopping_distance(int train, int speed)
+{
+    if(track_id == 'A') return track_constants.stop_distance_a[train][speed];
+    if(track_id == 'B') return track_constants.stop_distance_b[train][speed];
+    assert(0); //Shouldn't get here!
+    return 0;
 }
 
 // helpers for dijkstras
@@ -499,11 +522,16 @@ void event()
 //     }
 // }
 
-int switch_needed(TrainPathPlan* p, char* switch_id, char* direction)
+// TODO Remove these pointers, the function now switches tracks
+int switch_needed(TrainPathPlan* p)
 {
-
+    char switch_id;
+    char direction;
+    // Switch all switches between the next two sensors!
     // Look if there is a branch between the next two sensors, switch if there is.
     // If branch is last node in the path, we say no switch is needed.
+
+    int result = 0;
 
     int sensors_past = 0;
 
@@ -523,30 +551,19 @@ int switch_needed(TrainPathPlan* p, char* switch_id, char* direction)
         {
             track_node* after_branch = &current_track[p->path[i+1]];
 
-            *switch_id = node->num;
+            switch_id = node->num;
 
-            if(node->edge[DIR_STRAIGHT].dest == after_branch) *direction = STRAIGHT;
-            else if(node->edge[DIR_CURVED].dest == after_branch) *direction = CURVED; 
+            if(node->edge[DIR_STRAIGHT].dest == after_branch) direction = STRAIGHT;
+            else if(node->edge[DIR_CURVED].dest == after_branch) direction = CURVED; 
 
-            return 1; 
+            SwitchTrackAsync(tcid, switch_id, direction);
+            TPrintAt(pid, 0, 40, "switched %d in dir %d ", switch_id, direction);
+
+            result = 1;
         }
     }
 
-    return 0;
-
-    // if(p->current_node + 3 < p->path_len && track[p->path[p->current_node + 2]].type == NODE_BRANCH)
-    // {
-    //     track_node* branch = &track[p->path[p->current_node + 2]];
-    //     track_node* after_branch = &track[p->path[p->current_node + 3]];
-        
-    //     *switch_id = branch->num;
-        
-    //     if(branch->edge[DIR_STRAIGHT].dest == after_branch) *direction = STRAIGHT;
-    //     else if(branch->edge[DIR_CURVED].dest == after_branch) *direction = CURVED;  
-
-    //     return 1; 
-    // }
-    // else return 0;
+    return result;
 }
 
 int is_sensor(int node_id)
@@ -554,33 +571,95 @@ int is_sensor(int node_id)
     return (node_id >= 0 && node_id < MAX_SENSOR_NUMBER);
 }
 
+// Returns next sensor in path, as index in the path plans path array.
+int next_sensor(TrainPathPlan* plan)
+{
+    if(plan->current_node >= plan->path_len - 1) return -1; // No next node
+    int current_node = plan->current_node + 1; // Skip the current node
+
+    while(current_node < plan->path_len && current_track[plan->path[current_node]].type != NODE_SENSOR)
+        current_node++;
+    
+    if(current_node == plan->path_len - 1) return -1; // No next sensor node
+
+    assert(current_track[plan->path[current_node]].type == NODE_SENSOR);
+
+    // Otherwise current node is a sensor node!
+    return current_node;
+}
+
 void update_path_plan(TrainState* train_state, char* newly_triggered)
 {
-    // Make neccessary switch events if close to a switch
-    // TODO Keep track of switch state in tc server and have function to return 
+    // train_state has been updated, but path has not.
     
     assert(plan.state == train_state);
 
-    // Update current node in path plan if this sensor hit was on the path.
-    for(int i = plan.current_node; i < plan.path_len; i++)
-    {
+    // next sensor in the outdated path
+    int next = next_sensor(&plan);
+    if(next != -1) TPrintAt(pid, 0, 45, "next sensor %d ", plan.path[next]);
 
-        if(is_sensor(plan.path[i]) && plan.path[i] == train_state->node)
-        {
-            assert(is_sensor(train_state->node));
-            plan.current_node = i;
-            break;
-        }
+    // We should not be running if the last sensor in the path has already been hit
+    // This means we were trying to reloop while the track was not in loop. Keep going and 
+    // assert(next != -1); // CHANGED THIS
+
+    int train = train_state->id;
+    int speed = train_state->speed;
+    
+    // If train has deviated, replan
+    // This can be if next does not match
+    if(next == -1 || train_state->node != plan.path[next]) 
+    {
+        // If the train has deviated from the path, replan. 
+        int dest = plan.path[plan.path_len-1];
+        int offset = plan.path_distance[plan.path_len-1];
+        char end_speed = plan.end_speed;
+        
+        // For TC1, assume that a path still exists to the planned destination 
+        // (as it always does when in the centermost loop)
+        assert(shortest_paths[train_state->node][dest] != UNREACHABLE);
+
+        init_train_path_plan(&plan, train_state, dest, offset, end_speed);
+        
+        TPrintAt(pid, 0, 51, "Missed exit, new route created from %d to %d ", train_state->node, dest);
+        return;
     }
 
-    char switch_id;
-    char switch_direction;
-
-    // TODO Keep track of global switch state and transition to that 
-    if(switch_needed(&plan, &switch_id, &switch_direction))
+    // If we are on track, but dont have enough distance to stop, continue looping.
+    // Allow it to deviate so it may replan later.
+    if(plan.end_speed == 0 && plan.path_distance[next] < stopping_distance(train, speed))
     {
-        SwitchTrackAsync(tcid, switch_id, switch_direction);
-        TPrintAt(pid, 0, 40, "switched %d in dir %d ", switch_id, switch_direction);
+        return;
+    }
+
+    // Update current node in path plan if this sensor hit was on the path.
+    plan.current_node = next;
+    assert(plan.path[plan.current_node] == train_state->node)  // Should now match train state.
+
+    // Make next the future sensor to be hit now.
+    next = next_sensor(&plan);
+
+    // Switch a turnout if needed
+    // TODO Keep track of global switch state and transition to that 
+    switch_needed(&plan);
+
+    // No new sensors -> invalidate the track plan, calculate everything else needed for the path
+    if(next == -1) plan.valid = 0;
+
+    // Check if its time to stop
+    // Stop if were on the last sensor or the next sensors distance to the goal is less than our stopping distance
+    // (Our must be greater since we always check the next like this)
+    if(plan.end_speed == 0 && (next == -1 || plan.path_distance[next] < stopping_distance(train, speed)))  // TODO <= or < ?
+    {
+        plan.valid = 0; // invalidate path plan, we have reached the destination
+        // Create an event to stop when its time.
+        assert(plan.path_distance[plan.current_node] >= stopping_distance(train, speed));
+
+        int stop_command_distance = (plan.path_distance[plan.current_node] - stopping_distance(train, speed));
+        int stop_command_ticks = (stop_command_distance*100)/real_speed(train, speed);
+                                 // *100 since 100 ticks in a second, to get number of ticks instead of seconds 
+                                 // mm / ( (mm/s)*100 )
+
+        create_event_command(stop_command_ticks, EVENT_SPEED, train, 0);
     }
 }
 
@@ -808,8 +887,9 @@ void train_control_server(void)
                 break;
 
             case TARGET_POSITION:
-                _target_position(msg[1], msg[2], unpack_int(msg + 3));
+                assert(shortest_paths[train_state.node][(unsigned int)msg[2]] != UNREACHABLE)
                 Reply(sender, reply_msg, 0);
+                _target_position(msg[1], msg[2], unpack_int(msg + 3));
                 break;
             case SET_POSITION:
 

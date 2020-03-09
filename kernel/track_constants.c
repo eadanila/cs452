@@ -27,5 +27,34 @@ TrackConstants create_track_constants()
 	result.switch_id_to_index[0x9B] = 20;
 	result.switch_id_to_index[0x9C] = 21;
 
+	// Real speeds and stopping distances
+
+	for(int train = 0; train != MAX_TRAIN_NUMBER + 1; train++)
+	{
+		for(int speed = 0; speed != MAX_TRAIN_SPEED + 1; speed++)
+		{
+			result.stop_distance_a[train][speed] = NO_SPEED;
+			result.real_speed_a[train][speed] = NO_SPEED;
+			
+			result.stop_distance_b[train][speed] = NO_SPEED;
+			result.real_speed_b[train][speed] = NO_SPEED;
+		}
+	}
+
+	for(int train = 0; train != MAX_TRAIN_NUMBER + 1; train++)
+	{
+		// For now, set all trains to the same for both tracks
+
+		result.stop_distance_a[train][MIN_TRAIN_SPEED] = 400;
+		result.stop_distance_a[train][MAX_TRAIN_SPEED] = 1000;
+		result.real_speed_a[train][MIN_TRAIN_SPEED] = 333; // mm/s
+		result.real_speed_a[train][MAX_TRAIN_SPEED] = 641; // mm/s
+
+		result.stop_distance_b[train][MIN_TRAIN_SPEED] = 400;
+		result.stop_distance_b[train][MAX_TRAIN_SPEED] = 1000;
+		result.real_speed_b[train][MIN_TRAIN_SPEED] = 333; // mm/s
+		result.real_speed_b[train][MAX_TRAIN_SPEED] = 641; // mm/s
+	}
+
     return result;
 }

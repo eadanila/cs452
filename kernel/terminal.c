@@ -443,7 +443,11 @@ void process_command()
 		int t_target_speed = parse_int(&command_p);
 
 		if(command_p == 0) print_invalid_argument();
-		if(!is_valid_speed(t_target_speed)) print_invalid_argument();
+		if(!is_valid_speed(t_target_speed))
+		{
+			print_invalid_argument();
+			return;
+		} 
 
 		if(InitTrain(train_control_server_id, t_number, t_node, t_target_node, t_target_speed) == NO_PATH_EXISTS)
 			print_invalid_path();
