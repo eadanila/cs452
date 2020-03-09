@@ -7,6 +7,9 @@
 #include "await.h"
 #include "string_utility.h"
 
+#define UART_NOTIFIER_PRIORITY 0
+#define UART_SERVER_PRIORITY 1
+
 #define GET_CHAR 1
 #define PUT_CHAR 2
 #define PUT_COMMAND 3
@@ -143,8 +146,8 @@ void uart1_server(void)
     // Notifiers and must be one priority level higher
     // Both notifiers start off initially blocked
     // and only one is ever unblocked at a time.
-    int uart1_getc_notifer_tid  =  Create(0, uart1_getc_notifer);
-    int uart1_putc_notifer_tid  = Create(0, uart1_putc_notifer);
+    int uart1_getc_notifer_tid  =  Create(UART_NOTIFIER_PRIORITY, uart1_getc_notifer);
+    int uart1_putc_notifer_tid  = Create(UART_NOTIFIER_PRIORITY, uart1_putc_notifer);
 
     RingBuffer put_buffer;
     // TODO, replace with a single character since only one task can call Getc at a time
@@ -337,8 +340,8 @@ void uart2_server(void)
 
     // Notifiers and must be one priority level higher
     // Both notifiers may be unblocked at a time.
-    int uart2_getc_notifer_tid  = Create(0, uart2_getc_notifer);
-    int uart2_putc_notifer_tid  = Create(0, uart2_putc_notifer);
+    int uart2_getc_notifer_tid  = Create(UART_NOTIFIER_PRIORITY, uart2_getc_notifer);
+    int uart2_putc_notifer_tid  = Create(UART_NOTIFIER_PRIORITY, uart2_putc_notifer);
 
     RingBuffer put_buffer;
     RingBuffer get_buffer;
@@ -430,6 +433,6 @@ void uart2_server(void)
 void create_uart_servers(void)
 {
     // Create(1, uart1_noqueue_server);
-    Create(1, uart1_server);
-    Create(1, uart2_server);
+    Create(UART_SERVER_PRIORITY, uart1_server);
+    Create(UART_SERVER_PRIORITY, uart2_server);
 }

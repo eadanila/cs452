@@ -3,6 +3,7 @@
 #include "name_server.h"
 #include "logging.h"
 #include "task.h"
+#include "clock_server.h"
 
 #include "string_utility.h"
 // #include "string.h" // Doesn't work, get that str functions are undefined
@@ -11,7 +12,7 @@
 #define REGISTERAS_MESSAGE_PREFIX 1
 #define WHOIS_MESSAGE_PREFIX 2
 
-char names[MAX_TASKS_ALLOWED][MAX_NAME_LENGTH];
+static char names[MAX_TASKS_ALLOWED][MAX_NAME_LENGTH];
 
 int RegisterAs(const char *name)
 {
@@ -45,6 +46,18 @@ int WhoIs(const char *name)
     Send(name_server_id, message, msglen, reply, 1);
 
     return (signed char)reply[0];
+}
+
+int WhoIsWait(int clock_server_id, const char* name)
+{
+    int pid = WhoIs(name);
+    while(pid < 0)
+    {
+        Delay(clock_server_id, 4);
+        pid = WhoIs(name);
+    }
+
+    return pid;
 }
 
 int _who_is(char *name)

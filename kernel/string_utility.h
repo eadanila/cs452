@@ -44,8 +44,9 @@ int stoi(char* s);
 // in the buffer "result" rather than printing them.
 // Require: fmt is a valid formatting string
 //          size is the number of bytes in result
-// Return: 0 if successful and 1 if there was not enough room in result.
-// If 1 is returned, the formatted string was still been placed in the buffer, 
+// Return: a positive integer representing the index of the null pointer if 
+// successful and -1 if there was not enough room in result.
+// If -1 is returned, the formatted string was still been placed in the buffer, 
 // but has been truncated to fit.
 int format_string ( char* result, int size, char *fmt, ... );
 int _format_string ( char* result, int size, char *fmt, va_list va );
