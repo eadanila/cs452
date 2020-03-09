@@ -14,4 +14,7 @@ int name_server_id; // Stores the task id of the name server for use by Register
 int RegisterAs(const char *name);
 int WhoIs(const char *name);
 
+// Blocks until the name becomes registered, then returns its tid
+int WhoIsWait(int clock_server_id, const char* name);
+
 void name_server(void);

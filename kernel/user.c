@@ -14,11 +14,12 @@
 #include "print.h"
 #include "terminal.h"
 #include "tc_server.h"
+#include "train_control_server.h"
 
 #define EXPLANATION_COLOR GREEN_TEXT
 
-int recv_tid; int tid;
-int send_size;
+static int recv_tid; 
+static int tid;
 
 void test_recv4(void) {
     char recv_buf[4];
@@ -368,13 +369,22 @@ void clock_server_error_test()
     print("Should be: TIME, Got %d\n\r", DelayUntil(cs, 23));
 }
 
+void empty_spinner()
+{
+    int s = 0;
+    s++;
+    for(;;){}
+}
+
 void umain(void)
 {
     name_server_id = Create(0, name_server);
     Create(0, clock_server);
     create_uart_servers();
-    Create(2, tc_server);
-    Create(4, terminal);
+    Create(3, tc_server);
+    // Create(3, empty_spinner);
+    Create(4, train_control_server);
+    Create(5, terminal);
 
     // uart_send_byte(UART1, 16);
     // AwaitEvent(EVENT_UART1_CTS_LOW);

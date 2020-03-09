@@ -16,8 +16,8 @@
 #define TURNOUT_DOWN_LEFT 6
 #define TURNOUT_LEFT_UP 7
 
-#define TRACK_A 1
-#define TRACK_B 2
+#define TRACK_A 'A'
+#define TRACK_B 'B'
 
 typedef struct track_view TrackView;
 

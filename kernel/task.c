@@ -78,7 +78,8 @@ unsigned int *get_task_stack_pointer(int id) {
 void set_task_stack_pointer(int id, unsigned int *sp) {
     assert(is_valid_task(id));
     assert(sp <= task_list[id].stack_base);
-    assert(sp > task_list[id].stack_base - TASK_MEMORY_SIZE);
+    // TASK_MEMORY_SIZE is in bytes, so need to convert stack base to a (char*) before subtraction!
+    assert(sp > (unsigned int*)((char*)task_list[id].stack_base - TASK_MEMORY_SIZE)); 
 
     task_list[id].stack_pointer = sp;
 }
@@ -122,7 +123,7 @@ int allocate_task(int p_id, int pri) {
 
     task_list[id].p_id = p_id;
     task_list[id].priority = pri;
-    task_list[id].stack_base = (unsigned int *)(MEMORY_START + id*TASK_MEMORY_SIZE);
+    task_list[id].stack_base = (unsigned int *)(MEMORY_START + (id+1)*TASK_MEMORY_SIZE);
     task_list[id].state = TASK_READY;
 
     active_tasks += 1;
