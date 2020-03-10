@@ -35,9 +35,21 @@ void idle_printer(void)
     int tid = WhoIs("terminal_output");
     int cid = WhoIs("clock_server");
 
-    for (int i = 0;; i++) {
+    for (;;) {
         Delay(cid, 10);
         int total_time = (983*idle_buffer.size/10); // In 10 ms ticks
         TPrint(tid, "\033[s\033[HIDLE: %d%%  \t\033[u", idle_buffer.idle_time/total_time);
+
+        if(idle_buffer.size == IDLE_HISTORY) 
+        {
+            uint min_idle = idle_buffer.data[0];
+            for(int i = 0; i != IDLE_HISTORY; i++)
+            {
+                if(idle_buffer.data[i] < min_idle) min_idle = idle_buffer.data[i];
+            } 
+
+            // One tick is 9830 debug clock ticks
+            TPrintAt(tid, 14, 0, "MIN TICK IDLE: %d%%  \t\033[u", 100*min_idle/9830);
+        }
     }
 }
