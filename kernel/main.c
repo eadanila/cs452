@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     int idle_task_id = kcreate(15, (uint)idle_task);
     DEBUG("Idle task ID: %d", idle_task_id);
     kcreate(14, (uint)idle_printer);
-    int id = kcreate(13, (uint)umain);
+    int id = kcreate(0, (uint)umain);
 
     start_time = 0;
     end_time = 0;
