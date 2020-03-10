@@ -8,6 +8,7 @@
 #include "frame.h"
 
 #include "uart.h"
+#include "idle_printer.h"
 
 void enable_interrupt(uint interrupt) {
     assert(interrupt <= 63);
@@ -76,6 +77,9 @@ uint handle_vic1(void) {
         }
         clear_timer(TIMER_TC1);
         handled |= interrupt;
+
+        add_measurement(&idle_buffer, idle_time);
+        idle_time = 0;
     }
 
     // TC2 underflow interrupt

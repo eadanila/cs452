@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
     start_time = 0;
     end_time = 0;
     idle_time = 0;
+    init_idle_buffer(&idle_buffer);
 
     // sanity check
     int sid = pop_task();
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]) {
         set_task_stack_pointer(id, enter_user(get_task_stack_pointer(id)));
         end_time = read_debug_timer();
 
+        // Must happen before swi, where end_time and idle_time may get set to 0
         if (id == idle_task_id) {
             idle_time += (end_time - start_time);
         }
