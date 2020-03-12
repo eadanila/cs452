@@ -12,6 +12,7 @@
 #include "terminal.h"
 #include "clock_server.h"
 #include "shortest_path.h"
+#include "delayed_event.h"
 
 #define TARGET_POSITION 1
 #define SET_POSITION 2
@@ -21,7 +22,6 @@
 
 #define SENSOR_DUMP 5
 #define NEW_TIME 6
-#define EVENT_OCCURED 7
 
 #define TRACK_A_SIZE 144
 #define TRACK_B_SIZE 140
@@ -213,27 +213,6 @@ void train_control_sensor_state_notifier()
 		// Notify server that a sensor dump was completed
         Send(tid, msg, 11, reply, 0);
 	}
-}
-
-void event()
-{
-    int cid = WhoIs("clock_server");
-    int sender;
-    char msg[4];
-
-    // Receive integer delay and respond instantly
-    Receive(&sender, msg, 4);
-    Reply(sender, msg, 0);
-
-    // Delay for time received
-    int time = Delay(cid, unpack_int(msg));
-
-    // After the delay, send back the current time!
-    char response[5];
-    response[0] = EVENT_OCCURED;
-    pack_int(time, response + 1);
-    char reply;
-    Send(sender, response, 5, &reply, 0);
 }
 
 // // This is used for interpolation, and executing commands at any tick.
@@ -440,22 +419,6 @@ void update_train_states(TrainState* train_state, char* newly_triggered)
 
     // Update train position to this sensor
     train_state->node = sensor_triggered;
-}
-
-int create_event(int delay)
-{
-    assert(delay > 0);
-    // Create event task
-    int event_id = Create(3, event);
-    char msg[4];
-    char reply[1];
-
-    // Send the delay duration
-    pack_int(delay, msg);
-    Send(event_id, msg, 5, reply, 0); // Will get replied to instantly 
-
-    // return the tid of the task as the event id
-    return event_id;
 }
 
 void create_event_command(int ticks, int type, int id, int arg)
