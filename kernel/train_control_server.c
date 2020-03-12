@@ -26,14 +26,10 @@
 #define TRACK_A_SIZE 144
 #define TRACK_B_SIZE 140
 
-#define TRAIN_SPEED_MAX 14
-#define TRAIN_SPEED_MIN 8
-
 #define STATUS_BAR_HEIGHT 43
 
 #define MAX_COMMAND_NUMBER MAX_TASKS_ALLOWED - 1
 
-void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset, char end_speed);
 void create_event_command(int ticks, int type, int id, int arg);
 
 int TargetPosition(int tid, char train_id, char track_node_number, int offset)
@@ -126,18 +122,6 @@ static TrainPathPlan plan;
 static int event_cnt;
 static int sensor_time;
 
-// UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
-    // track_node* tracka;
-    // track_node* trackb;
-
-    // // For each node, a complete path 
-    // int (*shortest_paths_a)[TRACK_MAX];
-    // int (*shortest_paths_b)[TRACK_MAX];
-
-    // // Distances for above paths
-    // int (*shortest_distances_a)[TRACK_MAX];
-    // int (*shortest_distances_b)[TRACK_MAX];
-
 void _set_position(char train_id, char sensor_id1, char sensor_id2)
 {
 
@@ -149,7 +133,9 @@ void _target_position(char train_id, char track_node_number, int offset)
     assert(train_id == train_state.id);
 
     // Overwrite the current track plan
-    init_train_path_plan(&plan, &train_state, track_node_number, offset, 0);
+    init_train_path_plan(&plan, &train_state, 
+                         shortest_paths[train_state.node], shortest_distances[train_state.node],
+                         track_node_number, offset, 0);
 }
 
 void _get_position(char train_id)
@@ -203,84 +189,6 @@ void initialize()
     init_trackb(trackb);
 
     compute_shortest_paths();
-}
-
-// Train path functions
-
-// NOTE: Assuming dest_offset does not reach the node before or after it.
-// TODO Add an error return for this ^
-// A shortest path from node to dest must exist.
-void init_train_path_plan(TrainPathPlan* p, TrainState* train_state, int dest, int dest_offset, char end_speed)
-{
-    p->valid = 1;
-    p->state = train_state;
-    p->end_speed = end_speed;
-    p->next_sensor_time = -1;
-
-    int node = train_state->node;
-
-    assert (node != dest);
-    int* previous = shortest_paths[node];
-    int* distances = shortest_distances[node];
-
-    // p->state.node = node;
-    // p->state.offset = offset;
-    assert(previous[dest] != UNREACHABLE);
-    // TODO Precompute the following?
-
-    // Pull out and reverse paths from previous arrays created by dijkstras.
-    int prev = dest;
-    int total_distance = distances[dest];
-
-    int path_nodes = 0;
-
-    assert(previous[prev] != -1); // Creating path between nodes that are unreachable
-
-    while(prev != -1)
-    {
-        p->path[path_nodes] = prev;
-        prev = previous[prev];
-
-        path_nodes++;
-    }
-    p->path[path_nodes] = node; // Put origin in the path
-
-    p->path_len = path_nodes + 1;
-
-    // Reverse the path list which are in reverse order
-    for(int i = 0; i != p->path_len/2; i++) 
-    {
-        int temp = p->path[i];
-        p->path[i] = p->path[p->path_len - 1 - i];
-        p->path[p->path_len - 1 - i] = temp;
-    }
-
-    // Create distance array, invert distances to make them 
-    // distance remaining instead of distance covered.
-    for(int i = 0; i != p->path_len; i++)
-        p->path_distance[i] = total_distance - distances[p->path[i]];
-
-    p->current_node = 0;
-
-    assert(p->state->node == p->path[p->current_node]);
-
-    // Apply dest offsets to all distances, and remove last node if negative offset.
-    for(int i = 0; i != p->path_len; i++) p->path_distance[i] += dest_offset;
-
-    // Remove nodes in path left with negative distances (if offset was negative, some nodes may be rendered useless)
-    while(p->path_len - 1 >= 0 && p->path_distance[ p->path_len - 1 ] < 0) p->path_len--;
-
-    assert(p->path_len > 0);
-}
-
-void init_train_state(TrainState* result, int id, int node, int offset, int speed)
-{
-    result->valid = 1;
-
-    result->id = id;
-    result->node = node;
-    result->offset = offset;
-    result->speed = speed;
 }
 
 // Continously spins for sensor data from the tc server and sends it 
@@ -394,26 +302,10 @@ int switch_needed(TrainPathPlan* p)
     return result;
 }
 
+// TODO Move somewhere?
 int is_sensor(int node_id)
 {
     return (node_id >= 0 && node_id < MAX_SENSOR_NUMBER);
-}
-
-// Returns next sensor in path, as index in the path plans path array.
-int next_sensor(TrainPathPlan* plan)
-{
-    if(plan->current_node >= plan->path_len - 1) return -1; // No next node
-    int current_node = plan->current_node + 1; // Skip the current node
-
-    while(current_node < plan->path_len && current_track[plan->path[current_node]].type != NODE_SENSOR)
-        current_node++;
-    
-    if(current_node == plan->path_len - 1) return -1; // No next sensor node
-
-    assert(current_track[plan->path[current_node]].type == NODE_SENSOR);
-
-    // Otherwise current node is a sensor node!
-    return current_node;
 }
 
 void clear_status_print()
@@ -430,7 +322,7 @@ void update_path_plan(TrainState* train_state, char* newly_triggered)
     assert(plan.state == train_state);
 
     // next sensor in the outdated path
-    int next = next_sensor(&plan);
+    int next = next_sensor(&plan, current_track);
     if(next != -1) TPrintAt(pid, 0, 45, "next sensor %d ", plan.path[next]);
 
     // We should not be running if the last sensor in the path has already been hit
@@ -453,7 +345,9 @@ void update_path_plan(TrainState* train_state, char* newly_triggered)
         // (as it always does when in the centermost loop)
         assert(shortest_paths[train_state->node][dest] != UNREACHABLE);
 
-        init_train_path_plan(&plan, train_state, dest, offset, end_speed);
+        init_train_path_plan(&plan, train_state, 
+                             shortest_paths[train_state->node], shortest_distances[train_state->node], 
+                             dest, offset, end_speed);
         
         TPrintAt(pid, 0, 51, "Missed exit, new route created from %d to %d ", train_state->node, dest);
         return;
@@ -471,7 +365,7 @@ void update_path_plan(TrainState* train_state, char* newly_triggered)
     assert(plan.path[plan.current_node] == train_state->node)  // Should now match train state.
 
     // Make next the future sensor to be hit now.
-    next = next_sensor(&plan);
+    next = next_sensor(&plan, current_track);
 
     // update next sensor time if there is another sensor!
     if(next != -1)
@@ -548,12 +442,6 @@ void update_train_states(TrainState* train_state, char* newly_triggered)
     train_state->node = sensor_triggered;
 }
 
-// In the future this will be an array of train_states
-void interpolate_train_states(TrainState* train_state, int dt)
-{
-
-}
-
 int create_event(int delay)
 {
     assert(delay > 0);
@@ -607,17 +495,13 @@ void _init_train(char train_id, char original_track_node, char track_node_number
 {
     // In TC2, use train id to select the train state and path plan from a list for each train.
     init_train_state(&train_state, train_id, original_track_node, 0, speed_id);
-    init_train_path_plan(&plan, &train_state, track_node_number, 0, speed_id);
+    init_train_path_plan(&plan, &train_state, 
+                         shortest_paths[train_state.node], shortest_distances[train_state.node], 
+                         track_node_number, 0, speed_id);
 
     SetSpeed(tcid, train_id, speed_id);
 
     TPrintAt(pid, 0, 44, "INIT_TRAIN");
-}
-
-int is_valid_speed(int speed_id)
-{
-    // TODO Needs to be updated
-    return ((speed_id == TRAIN_SPEED_MAX) || (speed_id == TRAIN_SPEED_MIN));
 }
 
 void train_control_server(void)
@@ -636,27 +520,6 @@ void train_control_server(void)
     char msg[11];
     char reply_msg[1];
     reply_msg[0] = 0;
-
-    // UNCOMMENT FOR STACK ALLOCATED SHORTEST PATH DATA
-        // track_node _tracka[TRACK_MAX];
-        // track_node _trackb[TRACK_MAX];
-
-        // // For each node, a complete path 
-        // int _shortest_paths_a[TRACK_MAX][TRACK_MAX];
-        // int _shortest_paths_b[TRACK_MAX][TRACK_MAX];
-
-        // // Distances for above paths
-        // int _shortest_distances_a[TRACK_MAX][TRACK_MAX];
-        // int _shortest_distances_b[TRACK_MAX][TRACK_MAX];
-
-        // // Set globals for use in helper functions
-        // // Note that these globals are not used by any other task than this one.
-        // tracka = _tracka;
-        // trackb = _trackb;
-        // shortest_paths_a     = _shortest_paths_a;
-        // shortest_paths_b     = _shortest_paths_b;
-        // shortest_distances_a = _shortest_distances_a;
-        // shortest_distances_b = _shortest_distances_b;
 
     track_constants = create_track_constants();
 

@@ -7,12 +7,11 @@
 
 #include "tc_server.h"
 #include "track.h"
+#include "train_state.h"
 
 // NOTE: This is an initial interface meant to satisfy the requirements 
 //       for TC1 and may expand/change for TC2.
 
-typedef struct train_state TrainState;
-typedef struct train_path_plan TrainPathPlan;
 typedef struct event_command EventCommand;
 
 #define EVENT_SWITCH 1
@@ -24,31 +23,6 @@ struct event_command
     char type;
     char id;
     char arg;
-};
-
-struct train_state
-{
-    int valid;
-
-    int id;
-    int node;
-    int offset;
-    int speed;
-};
-
-struct train_path_plan
-{
-    int valid;
-
-    TrainState* state;
-    int path[TRACK_MAX];
-    int path_distance[TRACK_MAX];
-    int path_len;
-
-    // Index in the path 
-    int current_node;
-    int end_speed;
-    int next_sensor_time;
 };
 
 // Offset in mm
