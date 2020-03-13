@@ -1,0 +1,53 @@
+main
+
+util/
+    memcpy
+    memset
+    string_utility
+    logging
+    print
+
+kern/
+    kernel
+    constants
+    syscall
+    interrupt
+    train_timing
+    arm_lib
+    device/ 
+        uart
+        timer
+    task/
+        message_queue
+        pqueue
+        task
+        await
+        frame
+
+user/
+    user
+    terminal
+    util/
+        delayed_event -> delayed_callback
+    service/
+        clock_server
+        uart_server
+        name_server
+        idle_printer
+        idle
+    games/
+        rps_server
+        rps_client
+    track/
+        sensors
+        tc_server
+        track
+        track_constants
+        track_data
+        track_display
+        track_node
+        shortest_path
+    train/
+        train_control_server
+        train_state
+
